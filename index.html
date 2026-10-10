@@ -903,8 +903,9 @@ async function fetchIconify(q, page) {
   const items = icons.map(icon => {
     // icon format is "prefix:name"
     const [prefix, name] = icon.split(':');
-    const svgUrl = `https://api.iconify.design/${prefix}/${name}.svg`;
-    const previewUrl = `https://api.iconify.design/${prefix}/${name}.svg?width=256&height=256`;
+    // Iconify SVGs default to 1em sizing, which renders unreliably in <img>; request explicit pixel sizes
+    const svgUrl = `https://api.iconify.design/${prefix}/${name}.svg?height=1024`;
+    const previewUrl = `https://api.iconify.design/${prefix}/${name}.svg?height=256`;
     return {
       id: 'ic_' + icon, source: 'Iconify',
       title: name.replace(/-/g, ' ').replace(/_/g, ' '), photographer: prefix,
@@ -1116,17 +1117,38 @@ function downloadUrl(url, filename) {
   if (btn) { btn.textContent = 'Downloading…'; btn.disabled = true; }
   fetch(url)
     .then(r => { if (!r.ok) throw new Error(r.status); return r.blob(); })
+    .then(blob => (blob.type.includes('svg') ? svgToPng(blob) : blob))
     .then(blob => {
+      let name = filename || url.split('/').pop().split('?')[0] || 'image';
+      if (blob.type === 'image/png' && !/\.png$/i.test(name)) name = name.replace(/\.svg$/i, '') + '.png';
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = filename || url.split('/').pop().split('?')[0] || 'image';
+      a.download = name;
       document.body.appendChild(a);
       a.click();
       a.remove();
-      URL.revokeObjectURL(a.href);
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
     })
     .catch(() => { const safe = safeUrl(url); if (safe) window.open(safe, '_blank'); })
     .finally(() => { if (btn) { btn.textContent = '\u2193 Download Image'; btn.disabled = false; } });
+}
+
+// Rasterize an SVG blob to a transparent PNG at the SVG's intrinsic pixel size
+function svgToPng(svgBlob) {
+  return new Promise((resolve, reject) => {
+    const src = URL.createObjectURL(svgBlob);
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth || 1024;
+      canvas.height = img.naturalHeight || 1024;
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(src);
+      canvas.toBlob(b => (b ? resolve(b) : reject(new Error('PNG conversion failed'))), 'image/png');
+    };
+    img.onerror = () => { URL.revokeObjectURL(src); reject(new Error('SVG load failed')); };
+    img.src = src;
+  });
 }
 
 function downloadImage() {

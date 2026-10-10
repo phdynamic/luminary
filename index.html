@@ -89,7 +89,6 @@
   .dot-wikimedia { background: #069; }
   .dot-nasa { background: #fc3d21; }
   .dot-iconify { background: #1769aa; }
-  .dot-harvard { background: #a51c30; }
 
   /* Free-only toggle */
   .toggle-wrap { display: flex; align-items: center; gap: 8px; }
@@ -346,7 +345,6 @@
           <button class="chip active" id="chip-wikimedia" onclick="toggleChip('wikimedia')"><span class="dot dot-wikimedia"></span>Wikimedia</button>
           <button class="chip active" id="chip-nasa" onclick="toggleChip('nasa')"><span class="dot dot-nasa"></span>NASA</button>
           <button class="chip active" id="chip-iconify" onclick="toggleChip('iconify')"><span class="dot dot-iconify"></span>Iconify</button>
-          <button class="chip active" id="chip-harvard" onclick="toggleChip('harvard')"><span class="dot dot-harvard"></span>Harvard Art</button>
         </div>
       </div>
     </div>
@@ -526,8 +524,8 @@
 
 <script>
 // ---- State ----
-const ALL_SOURCES = ['pexels','unsplash','pixabay','openverse','wikimedia','nasa','iconify','harvard'];
-const SOURCE_LABELS = { pexels:'Pexels', unsplash:'Unsplash', pixabay:'Pixabay', openverse:'Openverse', wikimedia:'Wikimedia', nasa:'NASA', iconify:'Iconify', harvard:'Harvard Art' };
+const ALL_SOURCES = ['pexels','unsplash','pixabay','openverse','wikimedia','nasa','iconify'];
+const SOURCE_LABELS = { pexels:'Pexels', unsplash:'Unsplash', pixabay:'Pixabay', openverse:'Openverse', wikimedia:'Wikimedia', nasa:'NASA', iconify:'Iconify' };
 let activeSources = Object.fromEntries(ALL_SOURCES.map(s => [s, true]));
 
 let currentModal = null;
@@ -555,7 +553,6 @@ const MIN_DIM = 500;      // exclude images smaller than 500×500 (when dimensio
 const KEY_PEXELS      = '1DQboNmA7nYSIxexbVctwCz6CrXEMEudhlCW5GxCw8C5tJfA1wf3DkKX';
 const KEY_UNSPLASH    = 'dtzOYQ0iqydb5FdzbmJl72p2bW5l80QgyAHQkzNU8BY';
 const KEY_PIXABAY     = '18017390-57da3d02482166a97cd417d7d';
-const KEY_HARVARD     = 'a741fdfd-4908-489d-b642-83b9c1af4323';
 
 // ---- Source toggles ----
 function toggleChip(src) {
@@ -738,7 +735,7 @@ function shuffle(arr) {
 const FETCHERS = {
   pexels: fetchPexels, unsplash: fetchUnsplash, pixabay: fetchPixabay,
   openverse: fetchOpenverse, wikimedia: fetchWikimedia, nasa: fetchNasa,
-  iconify: fetchIconify, harvard: fetchHarvard,
+  iconify: fetchIconify,
 };
 
 // ---- Fetch one page across active sources ----
@@ -921,29 +918,6 @@ async function fetchIconify(q, page) {
   });
   if (offset + PER_SOURCE >= (data.total || 0)) exhausted.iconify = true;
   return { source: 'iconify', items };
-}
-
-async function fetchHarvard(q, page) {
-  const res = await fetch(`https://api.harvardartmuseums.org/object?apikey=${KEY_HARVARD}&keyword=${encodeURIComponent(q)}&hasimage=1&size=${PER_SOURCE}&page=${page}&fields=objectid,title,people,primaryimageurl,images,url,imagepermissionlevel`);
-  if (!res.ok) throw new Error('Harvard Art: ' + res.status);
-  const data = await res.json();
-  const items = (data.records || []).filter(r => r.primaryimageurl).map(r => {
-    const artist = r.people?.length ? r.people[0].name : 'Unknown';
-    const thumb = r.primaryimageurl + '?width=400';
-    return {
-      id: 'hv_' + r.objectid, source: 'Harvard Art',
-      title: r.title || 'Harvard Art Museums artwork', photographer: artist,
-      thumb: thumb,
-      srcSet: { small: r.primaryimageurl + '?width=200', medium: thumb, large: r.primaryimageurl + '?width=1200', original: r.primaryimageurl },
-      width: null, height: null,
-      pageUrl: r.url || `https://harvardartmuseums.org/collections/object/${r.objectid}`,
-      license: 'Fair Use', licenseNote: 'Harvard Art Museums — Image may be used for educational and personal purposes.',
-      isCC0: true, mediaType: 'illustration',
-    };
-  });
-  const info = data.info || {};
-  if (page >= info.pages) exhausted.harvard = true;
-  return { source: 'harvard', items };
 }
 
 // ---- Build a single image card element ----

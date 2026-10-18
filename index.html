@@ -265,6 +265,11 @@
   .modal { position: relative; background: var(--bg2); border: 1px solid var(--border2); border-radius: 16px; width: auto; max-width: min(1200px, calc(100vw - 120px)); max-height: 90vh; overflow: hidden; display: grid; grid-template-columns: auto 340px; transform: scale(0.96); transition: transform 0.2s; }
   .modal-overlay.open .modal { transform: scale(1); }
   .modal-img-pane { background: var(--bg3); display: flex; align-items: center; justify-content: center; min-width: 280px; min-height: 280px; max-height: 90vh; overflow: hidden; }
+  .modal-img-pane.loading img, .modal-img-pane:not(.loading) .img-skeleton { display: none; }
+  .img-skeleton, .text-skeleton { background: linear-gradient(90deg, var(--surface) 25%, #3d3460 50%, var(--surface) 75%); background-size: 200% 100%; animation: shimmer 1.2s linear infinite; }
+  .img-skeleton { display: flex; align-items: center; justify-content: center; border-radius: 8px; color: var(--text2); font-size: 13px; }
+  .text-skeleton { display: inline-block; width: 110px; height: 0.9em; border-radius: 4px; vertical-align: middle; }
+  @keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
   .modal-img-pane img { display: block; width: auto; height: auto; max-width: min(800px, calc(100vw - 460px)); max-height: 90vh; object-fit: contain; transition: opacity 0.2s; }
   .modal-info-pane { padding: 22px 22px 20px; display: flex; flex-direction: column; gap: 14px; min-width: 0; max-height: 90vh; overflow-y: auto; }
   .modal-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
@@ -573,7 +578,8 @@
   <button type="button" class="modal-nav next" id="modalNext" onclick="navigateModal(1)" aria-label="Next image">&#x203A;</button>
   <div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
     <div class="modal-img-pane">
-      <img id="modalImg" src="" alt="">
+      <div class="img-skeleton" id="modalSkeleton" aria-hidden="true">Loading image…</div>
+      <img id="modalImg" alt="">
     </div>
     <div class="modal-info-pane">
       <div class="modal-top">
@@ -882,7 +888,7 @@ async function fetchPexels(q, page) {
     id: 'px_' + p.id, source: 'Pexels',
     title: p.alt || 'Pexels photo', photographer: p.photographer, photographerUrl: p.photographer_url,
     thumb: p.src.large,
-    srcSet: { small: p.src.small, medium: p.src.medium, large: p.src.large, original: p.src.original },
+    srcSet: { small: p.src.small, medium: p.src.medium, large: p.src.large2x || p.src.large, original: p.src.original },
     width: p.width, height: p.height, pageUrl: p.url,
     license: 'Pexels License', licenseNote: 'Free to use for any purpose. No attribution required.', isCC0: true, mediaType: 'photo',
   }));
@@ -1383,19 +1389,50 @@ function showModalItem(img) {
 
   $('modalLicense').textContent = img.licenseNote;
   $('modalOpen').href = attributionUrl(img.pageUrl, img) || '#';
-  const url = img.srcSet.original || img.thumb;
-  imgEl.style.opacity = '0.5';
-  imgEl.onload = () => { imgEl.style.opacity = '1'; };
-  imgEl.src = safeUrl(url);
+  showModalImage(img);
   renderModalAttrs(img);
   updateModalStar();
   updateModalNav();
 }
 
+// Shows a placeholder shaped like the image until it arrives, so a slow load never shows the previous picture.
+// The popup displays the large version; the full original is only fetched for downloads.
+let modalImageToken = 0;
+function showModalImage(img) {
+  const pane = document.querySelector('.modal-img-pane');
+  const imgEl = $('modalImg');
+  const token = ++modalImageToken;
+  imgEl.onload = imgEl.onerror = null;
+  imgEl.removeAttribute('src');
+  pane.classList.add('loading');
+  pane.setAttribute('aria-busy', 'true');
+
+  const phone = matchMedia('(max-width: 640px)').matches;
+  const maxW = phone ? innerWidth - 42 : Math.min(800, innerWidth - 460);
+  const maxH = innerHeight * (phone ? 0.45 : 0.9);
+  const ratio = img.width && img.height ? img.width / img.height : 4 / 3;
+  const w = Math.max(200, Math.min(maxW, maxH * ratio));
+  Object.assign($('modalSkeleton').style, { width: `${Math.round(w)}px`, height: `${Math.round(Math.min(maxH, w / ratio))}px` });
+
+  const done = () => {
+    if (token !== modalImageToken) return;  // a newer image was opened meanwhile
+    pane.classList.remove('loading');
+    pane.removeAttribute('aria-busy');
+  };
+  imgEl.onload = done;
+  imgEl.onerror = () => {
+    if (token !== modalImageToken) return;
+    // Fall back to the thumbnail, which the grid has usually already loaded
+    if (imgEl.src !== safeUrl(img.thumb) && safeUrl(img.thumb)) imgEl.src = safeUrl(img.thumb);
+    else done();
+  };
+  imgEl.src = safeUrl(img.srcSet.large || img.srcSet.original || img.thumb);
+}
+
 function renderModalAttrs(img) {
   $('modalAttrs').innerHTML =
     `<div class="attr-row"><span class="attr-label">Credit</span><span class="attr-val img-credit-inline">${creditHtml(img)}</span></div>` +
-    `<div class="attr-row"><span class="attr-label">Size</span><span class="attr-val">${escHtml(longDims(img))}</span></div>` +
+    `<div class="attr-row"><span class="attr-label">Size</span><span class="attr-val">${img.measuring ? '<span class="text-skeleton" role="img" aria-label="Measuring"></span>' : escHtml(longDims(img))}</span></div>` +
     `<div class="attr-row"><span class="attr-label">License</span><span class="attr-val">${escHtml(img.license)}</span></div>`;
 }
 
@@ -1416,6 +1453,9 @@ function closeModal() {
   if (!isOpen('modalOverlay')) return;
   $('modalOverlay').classList.remove('open');
   syncOverlays();
+  modalImageToken++;
+  $('modalImg').onload = $('modalImg').onerror = null;
+  $('modalImg').removeAttribute('src');
   // Return focus to the card for the image last viewed, falling back to whatever opened the modal
   const card = currentModal?._card;
   const target = card?.isConnected && !isOpen('collectionOverlay') ? card.querySelector('.card-hit') : modalReturnFocus;

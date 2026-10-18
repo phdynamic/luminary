@@ -96,6 +96,7 @@
   .dot-wikimedia { background: #069; }
   .dot-nasa { background: #fc3d21; }
   .dot-iconify { background: #1769aa; }
+  .dot-nli { background: #2f6fb5; }
 
   /* Free-only toggle */
   .toggle-wrap { display: flex; align-items: center; gap: 8px; }
@@ -410,6 +411,7 @@
           <button type="button" class="chip active" id="chip-wikimedia" aria-pressed="true" onclick="toggleChip('wikimedia')"><span class="dot dot-wikimedia" aria-hidden="true"></span>Wikimedia</button>
           <button type="button" class="chip active" id="chip-nasa" aria-pressed="true" onclick="toggleChip('nasa')"><span class="dot dot-nasa" aria-hidden="true"></span>NASA</button>
           <button type="button" class="chip active" id="chip-iconify" aria-pressed="true" onclick="toggleChip('iconify')"><span class="dot dot-iconify" aria-hidden="true"></span>Iconify</button>
+          <button type="button" class="chip active" id="chip-nli" aria-pressed="true" onclick="toggleChip('nli')"><span class="dot dot-nli" aria-hidden="true"></span>National Library of Israel</button>
         </div>
       </div>
     </div>
@@ -556,8 +558,9 @@
     <a href="https://pixabay.com" target="_blank" rel="noopener">Pixabay</a>,
     <a href="https://openverse.org" target="_blank" rel="noopener">Openverse</a>,
     <a href="https://commons.wikimedia.org" target="_blank" rel="noopener">Wikimedia Commons</a>,
-    <a href="https://images.nasa.gov" target="_blank" rel="noopener">NASA</a> and
-    <a href="https://iconify.design" target="_blank" rel="noopener">Iconify</a>.
+    <a href="https://images.nasa.gov" target="_blank" rel="noopener">NASA</a>,
+    <a href="https://iconify.design" target="_blank" rel="noopener">Iconify</a> and the
+    <a href="https://www.nli.org.il" target="_blank" rel="noopener">National Library of Israel</a>.
     Each image is credited to its creator; check the license shown before reuse.
   </footer>
 
@@ -614,8 +617,8 @@
 
 <script>
 // ---- Configuration ----
-const ALL_SOURCES = ['pexels','unsplash','pixabay','openverse','wikimedia','nasa','iconify'];
-const SOURCE_LABELS = { pexels:'Pexels', unsplash:'Unsplash', pixabay:'Pixabay', openverse:'Openverse', wikimedia:'Wikimedia', nasa:'NASA', iconify:'Iconify' };
+const ALL_SOURCES = ['pexels','unsplash','pixabay','openverse','wikimedia','nasa','iconify','nli'];
+const SOURCE_LABELS = { pexels:'Pexels', unsplash:'Unsplash', pixabay:'Pixabay', openverse:'Openverse', wikimedia:'Wikimedia', nasa:'NASA', iconify:'Iconify', nli:'NLI' };
 const SOURCE_KEYS = Object.fromEntries(Object.entries(SOURCE_LABELS).map(([k, v]) => [v, k]));
 const PER_SOURCE = 8;
 const MIN_DIM = 500;          // drop images smaller than 500×500 when the source reports dimensions
@@ -833,7 +836,7 @@ function shuffle(arr) {
 const FETCHERS = {
   pexels: fetchPexels, unsplash: fetchUnsplash, pixabay: fetchPixabay,
   openverse: fetchOpenverse, wikimedia: fetchWikimedia, nasa: fetchNasa,
-  iconify: fetchIconify,
+  iconify: fetchIconify, nli: fetchNli,
 };
 
 // Fetchers don't touch shared state; applyPage() does, and only for the current search
@@ -1035,6 +1038,62 @@ async function fetchIconify(q, page) {
   return { items, done: offset + PER_SOURCE >= (data.total || 0) };
 }
 
+// National Library of Israel: search returns Dublin Core records; each record's IIIF manifest
+// holds the image service address and full-size dimensions. Both go through the proxy.
+const DC = 'http://purl.org/dc/elements/1.1/';
+const dcValue = (rec, field) => rec[DC + field]?.[0]?.['@value'] ?? rec[DC + field]?.[0]?.['@id'] ?? '';
+
+async function fetchNli(q, page) {
+  const params = new URLSearchParams({
+    query: `any,contains,${q.replace(/,/g, ' ')}`,
+    material_type: 'photograph',
+    availability_type: 'online_and_api_access',
+    output_format: 'json',
+    result_page: page,
+  });
+  const res = await fetch(`${PROXY_URL}/nli?${params}`);
+  if (!res.ok) throw new Error('NLI: ' + res.status);
+  const records = await res.json();
+  if (!Array.isArray(records)) return { items: [], done: true };
+  const usable = records.filter(r => /^\d+$/.test(dcValue(r, 'recordid'))).slice(0, 20);
+  const items = await Promise.all(usable.map(async r => {
+    const recordId = dcValue(r, 'recordid');
+    const image = await nliImage(recordId);
+    const fallback = safeUrl(dcValue(r, 'thumbnail'));
+    if (!image && !fallback) return null;
+    const iiif = size => (image ? `${image.base}/full/${size}/0/default.jpg` : fallback);
+    return {
+      id: 'nli_' + recordId, source: 'NLI',
+      title: dcValue(r, 'title') || 'National Library of Israel item',
+      photographer: dcValue(r, 'creator') || '',
+      thumb: iiif('!600,600'),
+      srcSet: { small: iiif('!300,300'), medium: iiif('!600,600'), large: iiif('!2000,2000'), original: iiif('max') },
+      width: image?.width || null, height: image?.height || null,
+      pageUrl: safeUrl(r['@id']) || `https://www.nli.org.il/en/images/NNL_ARCHIVE_AL${recordId}`,
+      license: 'Rights vary — see record',
+      licenseNote: 'National Library of Israel. Rights vary by item: check the record page before reuse, and credit the library and photographer.',
+      isCC0: false, mediaType: 'photo',
+    };
+  }));
+  return { items: items.filter(Boolean), done: records.length === 0 };
+}
+
+// Reads the first image's IIIF service address and size from a v2 or v3 manifest
+async function nliImage(recordId) {
+  try {
+    const res = await fetch(`${PROXY_URL}/nli-manifest?id=${recordId}`);
+    if (!res.ok) return null;
+    const m = await res.json();
+    const canvas = m.sequences?.[0]?.canvases?.[0] || m.items?.[0];
+    const resource = canvas?.images?.[0]?.resource || canvas?.items?.[0]?.items?.[0]?.body;
+    const service = [].concat(resource?.service || [])[0];
+    const base = safeUrl(String(service?.['@id'] || service?.id || '').replace(/^http:\/\//, 'https://').replace(/\/+$/, ''));
+    return base ? { base, width: canvas.width || null, height: canvas.height || null } : null;
+  } catch {
+    return null;
+  }
+}
+
 // ---- Measuring images whose source doesn't report dimensions ----
 let measureRenderTimer = null;
 
@@ -1092,7 +1151,7 @@ const UNSPLASH_APP_NAME = 'luminary';
 const SOURCE_HOMES = {
   Pexels: 'https://www.pexels.com', Unsplash: 'https://unsplash.com', Pixabay: 'https://pixabay.com',
   Openverse: 'https://openverse.org', Wikimedia: 'https://commons.wikimedia.org',
-  NASA: 'https://images.nasa.gov', Iconify: 'https://icon-sets.iconify.design',
+  NASA: 'https://images.nasa.gov', Iconify: 'https://icon-sets.iconify.design', NLI: 'https://www.nli.org.il',
 };
 
 // Unsplash requires a referral tag on every link back to its site
@@ -1112,10 +1171,13 @@ function creditHtml(img) {
     return href ? `<a href="${escHtml(href)}" target="_blank" rel="noopener">${escHtml(text)}</a>` : escHtml(text);
   };
   const name = img.photographer && img.photographer !== 'Unknown' ? img.photographer : '';
-  const site = link(SOURCE_HOMES[img.source], img.source);
+  const site = link(SOURCE_HOMES[img.source], sourceName(img));
   if (img.mediaType === 'icon') return `Icon from ${link(img.pageUrl, name || 'an open-source set')} on ${site}`;
   return name ? `Photo by ${link(img.photographerUrl, name)} on ${site}` : `Image from ${site}`;
 }
+
+const SOURCE_FULL_NAMES = { NLI: 'National Library of Israel' };
+function sourceName(img) { return SOURCE_FULL_NAMES[img.source] || img.source; }
 
 // ---- Rendering ----
 function cardLabel(img) {
@@ -1367,7 +1429,7 @@ function creditText(img) {
   const title = truncate((img.title || 'Untitled').replace(/\s+/g, ' ').trim(), 120);
   const by = img.photographer && img.photographer !== 'Unknown' ? img.photographer.replace(/\s+/g, ' ').trim() : '';
   if (img.mediaType === 'icon') return `"${title}" icon from the ${by} icon set, via Iconify. License: ${img.license}. ${img.pageUrl}`;
-  return `"${title}"${by ? ' by ' + by : ''}, via ${img.source}. License: ${img.license}. ${img.pageUrl}`;
+  return `"${title}"${by ? ' by ' + by : ''}, via ${sourceName(img)}. License: ${img.license}. ${img.pageUrl}`;
 }
 
 function flash(btn, text, ok = true) {

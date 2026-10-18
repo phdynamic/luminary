@@ -3,7 +3,7 @@
 //
 // Deploy from the Cloudflare dashboard:
 //   1. Workers & Pages → Create → Create Worker, paste this file, Deploy.
-//   2. Worker → Settings → Variables and Secrets → add secrets PEXELS_KEY, UNSPLASH_KEY, PIXABAY_KEY.
+//   2. Worker → Settings → Variables and Secrets → add secrets PEXELS_KEY, UNSPLASH_KEY, PIXABAY_KEY, NLI_KEY.
 //   3. Optional: add a plain variable ALLOWED_ORIGINS with your site's address, e.g.
 //      https://yourname.github.io  (comma-separate several; leave unset to allow any site).
 //   4. Put the worker's URL (https://<name>.<account>.workers.dev) in PROXY_URL in index.html.
@@ -35,6 +35,17 @@ const ROUTES = {
     build: q => forward('https://pixabay.com/api/', q, ['q', 'id', 'per_page', 'page', 'safesearch']),
     sign: (upstream, headers, env) => upstream.searchParams.set('key', env.PIXABAY_KEY),
     cacheSeconds: 86400, // Pixabay asks that API requests be cached for 24 hours
+  },
+  nli: {
+    build: q => forward('https://api.nli.org.il/openlibrary/search', q, ['query', 'result_page', 'material_type', 'availability_type', 'output_format']),
+    sign: (upstream, headers, env) => upstream.searchParams.set('api_key', env.NLI_KEY),
+    cacheSeconds: 3600,
+  },
+  // NLI search results don't include image addresses; each record's IIIF manifest does
+  'nli-manifest': {
+    build: q => (/^\d{6,25}$/.test(q.get('id') || '') ? new URL(`https://iiif.nli.org.il/IIIFv21/${q.get('id')}/manifest`) : null),
+    sign: () => {},
+    cacheSeconds: 86400,
   },
 };
 

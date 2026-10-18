@@ -615,26 +615,11 @@ const COPY_MAX_PX = 2000;     // cap on clipboard image size
 const COLLECTION_KEY = 'luminary-collection';
 
 // ---- API access ----
-// Pexels, Unsplash and Pixabay need API keys. To keep them off this page, deploy proxy/worker.js
-// and put its URL in PROXY_URL. Once searches work through the proxy, delete DIRECT_KEYS entirely
-// and regenerate the three keys, since the current ones have been published in this file.
-const PROXY_URL = '';
-const DIRECT_KEYS = {
-  pexels:   '1DQboNmA7nYSIxexbVctwCz6CrXEMEudhlCW5GxCw8C5tJfA1wf3DkKX',
-  unsplash: 'dtzOYQ0iqydb5FdzbmJl72p2bW5l80QgyAHQkzNU8BY',
-  pixabay:  '18017390-57da3d02482166a97cd417d7d',
-};
+// Pexels, Unsplash and Pixabay need API keys, which live in the proxy (proxy/worker.js), not here.
+const PROXY_URL = 'https://luminary-proxy.normand-theriault.workers.dev';
 
 function keyedFetch(service, params) {
-  const qs = new URLSearchParams(params).toString();
-  if (PROXY_URL) return fetch(`${PROXY_URL.replace(/\/+$/, '')}/${service}?${qs}`);
-  const key = typeof DIRECT_KEYS === 'undefined' ? '' : DIRECT_KEYS[service];
-  if (!key) return Promise.reject(new Error(`${SOURCE_LABELS[service]}: no proxy or API key configured`));
-  const k = encodeURIComponent(key);
-  if (service === 'pexels')   return fetch(`https://api.pexels.com/v1/search?${qs}`, { headers: { Authorization: key } });
-  if (service === 'unsplash') return fetch(`https://api.unsplash.com/search/photos?${qs}&client_id=${k}`);
-  if (service === 'pixabay')  return fetch(`https://pixabay.com/api/?${qs}&key=${k}`);
-  return Promise.reject(new Error('Unknown service ' + service));
+  return fetch(`${PROXY_URL}/${service}?${new URLSearchParams(params)}`);
 }
 
 // ---- State ----

@@ -116,6 +116,16 @@ export default {
       await new Promise(r => setTimeout(r, 500));
       res = await fetch(upstream, { headers });
     }
+    if (!res.ok) {
+      // Visible in the worker's live logs; keys are blanked out so logs never contain secrets
+      const snippet = (await res.clone().text()).replace(/\s+/g, ' ').slice(0, 300);
+      const safeUrl = upstream.href.replace(/(api_key|key|client_id)=[^&]*/gi, '$1=REDACTED');
+      console.log(JSON.stringify({
+        route: url.pathname, status: res.status, upstream: safeUrl,
+        server: res.headers.get('server'), cfRay: res.headers.get('cf-ray'),
+        contentType: res.headers.get('content-type'), body: snippet,
+      }));
+    }
     return new Response(res.body, {
       status: res.status,
       headers: {

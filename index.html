@@ -809,6 +809,7 @@ async function doSearch() {
 
 async function loadMore() {
   if (loading || !currentQuery || !hasMore()) return;
+  if (!availableSources().length) { scheduleAfterCooldown(); updateScrollStatus(); return; }
   const token = loadToken;
   loading = true;
   clearError();
@@ -847,7 +848,7 @@ const FETCHERS = {
 
 // Fetchers don't touch shared state; applyPage() does, and only for the current search
 async function fetchPage(q) {
-  const sources = ALL_SOURCES.filter(s => activeSources[s] && !exhausted[s]);
+  const sources = availableSources();
   const results = await Promise.allSettled(sources.map(s => FETCHERS[s](q, pageState[s])));
   return { sources, results };
 }
@@ -856,7 +857,18 @@ function applyPage({ sources, results }) {
   const added = [], errors = [];
   results.forEach((r, i) => {
     const src = sources[i];
-    if (r.status !== 'fulfilled') { errors.push(r.reason); return; }
+    if (r.status !== 'fulfilled') {
+      const err = r.reason;
+      if (err?.status === 429) {
+        cooldownUntil[src] = Date.now() + err.waitSeconds * 1000;
+        const mins = Math.max(1, Math.round(err.waitSeconds / 60));
+        errors.push(new Error(`${SOURCE_LABELS[src]} is limiting requests right now; its results will resume in about ${mins} minute${mins === 1 ? '' : 's'}.`));
+        scheduleAfterCooldown();
+      } else {
+        errors.push(err);
+      }
+      return;
+    }
     const newToSource = r.value.items.filter(img => !sourceSeen[src].has(img.id));
     newToSource.forEach(img => sourceSeen[src].add(img.id));
     const fresh = newToSource.filter(img => !seenIds.has(img.id));
@@ -879,10 +891,39 @@ function hasMore() {
   return ALL_SOURCES.some(s => activeSources[s] && !exhausted[s]);
 }
 
+// ---- Rate limits ----
+// A source that answers 429 is skipped until its wait is over, instead of being asked again on every scroll
+let cooldownUntil = {};
+const RATE_LIMIT_WAIT_S = 60;
+
+function apiError(label, res) {
+  const err = new Error(`${label}: ${res.status}`);
+  err.label = label;
+  err.status = res.status;
+  const wait = Number(res.headers.get('Retry-After') || res.headers.get('X-RateLimit-Reset'));
+  err.waitSeconds = wait > 0 && wait < 3600 ? wait : RATE_LIMIT_WAIT_S;
+  return err;
+}
+
+function coolingDown(src) { return (cooldownUntil[src] || 0) > Date.now(); }
+
+// Sources that can be asked for another page right now
+function availableSources() {
+  return ALL_SOURCES.filter(s => activeSources[s] && !exhausted[s] && !coolingDown(s));
+}
+
+let cooldownTimer = null;
+function scheduleAfterCooldown() {
+  const next = Math.min(...ALL_SOURCES.filter(coolingDown).map(s => cooldownUntil[s]));
+  if (!isFinite(next)) return;
+  clearTimeout(cooldownTimer);
+  cooldownTimer = setTimeout(() => { updateScrollStatus(); maybeAutoLoad(); }, next - Date.now() + 100);
+}
+
 // ---- Per-source fetchers: each returns { items, done } ----
 async function fetchPexels(q, page) {
   const res = await keyedFetch('pexels', { query: q, per_page: PER_SOURCE, page });
-  if (!res.ok) throw new Error('Pexels: ' + res.status);
+  if (!res.ok) throw apiError('Pexels', res);
   const data = await res.json();
   const items = (data.photos || []).map(p => ({
     id: 'px_' + p.id, source: 'Pexels',
@@ -897,7 +938,7 @@ async function fetchPexels(q, page) {
 
 async function fetchUnsplash(q, page) {
   const res = await keyedFetch('unsplash', { query: q, per_page: PER_SOURCE, page, content_filter: 'high' });
-  if (!res.ok) throw new Error('Unsplash: ' + res.status);
+  if (!res.ok) throw apiError('Unsplash', res);
   const data = await res.json();
   const items = (data.results || []).map(p => ({
     id: 'us_' + p.id, source: 'Unsplash',
@@ -913,7 +954,7 @@ async function fetchUnsplash(q, page) {
 
 async function fetchPixabay(q, page) {
   const res = await keyedFetch('pixabay', { q, per_page: PER_SOURCE, page, safesearch: 'true' });
-  if (!res.ok) throw new Error('Pixabay: ' + res.status);
+  if (!res.ok) throw apiError('Pixabay', res);
   const data = await res.json();
   const items = (data.hits || []).map(p => ({
     id: 'pb_' + p.id, source: 'Pixabay',
@@ -930,7 +971,7 @@ async function fetchPixabay(q, page) {
 
 async function fetchOpenverse(q, page) {
   const res = await fetch(`https://api.openverse.org/v1/images/?q=${encodeURIComponent(q)}&page_size=${PER_SOURCE}&page=${page}&license_type=commercial,modification`);
-  if (!res.ok) throw new Error('Openverse: ' + res.status);
+  if (!res.ok) throw apiError('Openverse', res);
   const data = await res.json();
   const items = (data.results || []).map(p => {
     const licStr = (p.license || '').toLowerCase();
@@ -956,7 +997,7 @@ function fetchWikimedia(q, page) { return wikimediaSearch(q, page, 'Wikimedia');
 async function wikimediaSearch(search, page, label) {
   const offset = (page - 1) * PER_SOURCE;
   const res = await fetch(`https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrnamespace=6&gsrsearch=${encodeURIComponent(search)}&gsrlimit=${PER_SOURCE}&gsroffset=${offset}&prop=imageinfo&iiprop=url|extmetadata|size|mime&iiurlwidth=600&format=json&origin=*`);
-  if (!res.ok) throw new Error(label + ': ' + res.status);
+  if (!res.ok) throw apiError(label, res);
   const data = await res.json();
   const pages = data.query?.pages || {};
   const items = Object.values(pages).filter(p => (p.imageinfo?.[0]?.mime || '').startsWith('image/')).map(p => {
@@ -982,7 +1023,7 @@ async function wikimediaSearch(search, page, label) {
 
 async function fetchNasa(q, page) {
   const res = await fetch(`https://images-api.nasa.gov/search?q=${encodeURIComponent(q)}&media_type=image&page=${page}&page_size=${PER_SOURCE}`);
-  if (!res.ok) throw new Error('NASA: ' + res.status);
+  if (!res.ok) throw apiError('NASA', res);
   const data = await res.json();
   const collectionData = data.collection || {};
   const items = await Promise.all((collectionData.items || []).filter(item => item.links?.length > 0).map(async item => {
@@ -1021,7 +1062,7 @@ async function nasaAssets(nasaId) {
 async function fetchIconify(q, page) {
   const offset = (page - 1) * PER_SOURCE;
   const res = await fetch(`https://api.iconify.design/search?query=${encodeURIComponent(q)}&limit=${PER_SOURCE}&start=${offset}`);
-  if (!res.ok) throw new Error('Iconify: ' + res.status);
+  if (!res.ok) throw apiError('Iconify', res);
   const data = await res.json();
   // Iconify enforces a minimum page size larger than ours, so trim to keep offsets from overlapping
   const icons = (data.icons || []).slice(0, PER_SOURCE);
@@ -1060,7 +1101,7 @@ async function fetchNli(q, page) {
   const res = await fetch(`${PROXY_URL}/nli?${params}`);
   // NLI answers a request past the last page with a server error rather than an empty list
   if (!res.ok && page > 1 && res.status >= 500) return { items: [], done: true };
-  if (!res.ok) throw new Error('NLI: ' + res.status);
+  if (!res.ok) throw apiError('NLI', res);
   const records = await res.json();
   if (!Array.isArray(records)) return { items: [], done: true };
   const usable = records.filter(r => /^\d+$/.test(dcValue(r, 'recordid'))).slice(0, 20);
@@ -1336,7 +1377,7 @@ function sentinelNear() {
 }
 
 function maybeAutoLoad() {
-  if (currentQuery && allItems.length && !loading && !autoLoadPaused && hasMore() && !overlayOpen() && sentinelNear()) loadMore();
+  if (currentQuery && allItems.length && !loading && !autoLoadPaused && availableSources().length && !overlayOpen() && sentinelNear()) loadMore();
 }
 
 function updateScrollStatus() {
@@ -1344,6 +1385,7 @@ function updateScrollStatus() {
   if (!currentQuery || !allItems.length || !ALL_SOURCES.some(s => activeSources[s])) { el.innerHTML = ''; return; }
   if (loading) el.innerHTML = '<div class="spinner" aria-hidden="true"></div>Loading more images…';
   else if (!hasMore()) el.textContent = "You've reached the end of the results.";
+  else if (!availableSources().length) el.textContent = 'More results will load once the image services allow more requests.';
   else if (autoLoadPaused) el.innerHTML = '<p>The last batch had no images that match your filters.</p><button type="button" class="btn-load-more" onclick="resumeAutoLoad()">Load more images</button>';
   else el.innerHTML = '';
 }

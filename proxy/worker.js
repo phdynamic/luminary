@@ -49,6 +49,8 @@ const ROUTES = {
   },
 };
 
+const RATE_LIMIT_HEADERS = ['Retry-After', 'X-RateLimit-Limit', 'X-RateLimit-Remaining', 'X-RateLimit-Reset'];
+
 function forward(base, query, names) {
   const upstream = new URL(base);
   for (const name of names) {
@@ -107,10 +109,18 @@ export default {
         contentType: res.headers.get('content-type'), body: snippet,
       }));
     }
+    // Rate-limit details let the app wait the right amount of time after a 429
+    const rateHeaders = {};
+    for (const name of RATE_LIMIT_HEADERS) {
+      const value = res.headers.get(name);
+      if (value !== null) rateHeaders[name] = value;
+    }
     return new Response(res.body, {
       status: res.status,
       headers: {
         ...cors,
+        ...rateHeaders,
+        'Access-Control-Expose-Headers': RATE_LIMIT_HEADERS.join(', '),
         'Content-Type': res.headers.get('Content-Type') || 'application/json',
         // Errors aren't cached, so a temporary outage doesn't stick in visitors' browsers
         'Cache-Control': route.cacheSeconds && res.ok ? `public, max-age=${route.cacheSeconds}` : 'no-store',

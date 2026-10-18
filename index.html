@@ -969,21 +969,37 @@ async function fetchNasa(q, page) {
   if (!res.ok) throw new Error('NASA: ' + res.status);
   const data = await res.json();
   const collectionData = data.collection || {};
-  const items = (collectionData.items || []).filter(item => item.links?.length > 0).map(item => {
+  const items = await Promise.all((collectionData.items || []).filter(item => item.links?.length > 0).map(async item => {
     const d = item.data[0];
     const thumb = item.links[0].href;
+    const assets = await nasaAssets(d.nasa_id);
+    const pick = size => assets.find(u => new RegExp(`~${size}\\.(jpe?g|png|gif|webp)$`, 'i').test(u));
+    // Originals are sometimes TIFFs, which browsers can't show, so fall back to the large JPEG
+    const original = pick('orig') || pick('large') || thumb;
     return {
       id: 'nasa_' + d.nasa_id, source: 'NASA',
       title: d.title || 'NASA image', photographer: d.photographer || d.center || 'NASA',
       thumb,
-      srcSet: { small: thumb, medium: thumb, large: thumb, original: thumb },
+      srcSet: { small: thumb, medium: pick('medium') || thumb, large: pick('large') || original, original },
       width: null, height: null,
       pageUrl: `https://images.nasa.gov/details/${encodeURIComponent(d.nasa_id)}`,
       license: 'Public Domain', licenseNote: 'NASA public domain — Free to use. Courtesy credit to NASA appreciated.',
       isCC0: true, mediaType: 'photo',
     };
-  });
+  }));
   return { items, done: !(collectionData.links || []).some(l => l.rel === 'next') };
+}
+
+// NASA search results only link a thumbnail; the asset endpoint lists every size of the image
+async function nasaAssets(nasaId) {
+  try {
+    const res = await fetch(`https://images-api.nasa.gov/asset/${encodeURIComponent(nasaId)}`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return (data.collection?.items || []).map(i => String(i.href || '').replace(/^http:\/\//, 'https://'));
+  } catch {
+    return [];
+  }
 }
 
 async function fetchIconify(q, page) {
@@ -1021,13 +1037,25 @@ function measureImage(img) {
   if (!src) return;
   img.measuring = true;
   const probe = new Image();
-  probe.onload = () => {
-    img.width = probe.naturalWidth || null;
-    img.height = probe.naturalHeight || null;
+  const started = Date.now();
+  let timer;
+  const finish = (w, h) => {
+    if (!img.measuring) return;
+    clearInterval(timer);
+    probe.onload = probe.onerror = null;
+    probe.src = '';  // cancel the rest of the download
+    img.width = w || null;
+    img.height = h || null;
     img.measuring = false;
     onMeasured(img);
   };
-  probe.onerror = () => { img.measuring = false; onMeasured(img); };
+  // Dimensions are known once the file's header arrives, long before a large original finishes loading
+  timer = setInterval(() => {
+    if (probe.naturalWidth) finish(probe.naturalWidth, probe.naturalHeight);
+    else if (Date.now() - started > 30000) finish(null, null);
+  }, 50);
+  probe.onload = () => finish(probe.naturalWidth, probe.naturalHeight);
+  probe.onerror = () => finish(null, null);
   probe.src = src;
 }
 

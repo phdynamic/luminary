@@ -151,6 +151,11 @@
   .img-grid-footer { padding: 8px 10px; display: flex; justify-content: space-between; align-items: center; }
   .img-source-badge { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; padding: 3px 8px; border-radius: 4px; background: var(--tag-bg); color: var(--purple2); }
   .img-dims { font-size: 11px; color: var(--text3); }
+  .img-credit { padding: 0 10px 9px; font-size: 11px; color: var(--text3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .img-credit a, .img-credit-inline a, .collection-credit a, .site-footer a { position: relative; z-index: 2; color: var(--text2); text-decoration: underline; text-decoration-color: var(--border2); text-underline-offset: 2px; }
+  .img-credit a:hover, .img-credit-inline a:hover, .collection-credit a:hover, .site-footer a:hover { color: var(--purple2); }
+  .collection-credit { padding: 6px 8px; font-size: 10px; color: var(--text3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .site-footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--border); font-size: 12px; color: var(--text3); text-align: center; line-height: 1.7; }
 
   /* License badge — grid (absolute over image) */
   .license-badge { pointer-events: none; position: absolute; top: 8px; right: 8px; font-size: 10px; padding: 2px 7px; border-radius: 4px; font-weight: 600; letter-spacing: 0.05em; }
@@ -168,6 +173,7 @@
   }
   #resultsGrid.compact-view .img-thumb { aspect-ratio: 1/1; }
   #resultsGrid.compact-view .img-grid-footer { display: none; }
+  #resultsGrid.compact-view .img-credit { padding: 5px 6px; font-size: 10px; }
   #resultsGrid.compact-view .license-badge { font-size: 8px; padding: 1px 5px; top: 4px; right: 4px; }
   #resultsGrid.compact-view .star-btn { width: 26px; height: 26px; font-size: 13px; top: 4px; left: 4px; }
 
@@ -202,7 +208,7 @@
   }
 
   /* Hide grid-only elements in list view */
-  #resultsGrid.list-view .img-grid-footer { display: none; }
+  #resultsGrid.list-view .img-grid-footer, #resultsGrid.list-view .img-credit { display: none; }
   #resultsGrid.list-view .license-badge { display: none; }
 
   /* Show list detail in list view */
@@ -542,6 +548,18 @@
   <div class="scroll-status" id="scrollStatus"></div>
   </main>
 
+  <footer class="site-footer">
+    Images provided by
+    <a href="https://www.pexels.com" target="_blank" rel="noopener">Pexels</a>,
+    <a href="https://unsplash.com/?utm_source=luminary&amp;utm_medium=referral" target="_blank" rel="noopener">Unsplash</a>,
+    <a href="https://pixabay.com" target="_blank" rel="noopener">Pixabay</a>,
+    <a href="https://openverse.org" target="_blank" rel="noopener">Openverse</a>,
+    <a href="https://commons.wikimedia.org" target="_blank" rel="noopener">Wikimedia Commons</a>,
+    <a href="https://images.nasa.gov" target="_blank" rel="noopener">NASA</a> and
+    <a href="https://iconify.design" target="_blank" rel="noopener">Iconify</a>.
+    Each image is credited to its creator; check the license shown before reuse.
+  </footer>
+
   <div class="sr-only" id="srStatus" role="status" aria-live="polite"></div>
 </div>
 
@@ -864,7 +882,7 @@ async function fetchPexels(q, page) {
   const data = await res.json();
   const items = (data.photos || []).map(p => ({
     id: 'px_' + p.id, source: 'Pexels',
-    title: p.alt || 'Pexels photo', photographer: p.photographer,
+    title: p.alt || 'Pexels photo', photographer: p.photographer, photographerUrl: p.photographer_url,
     thumb: p.src.large,
     srcSet: { small: p.src.small, medium: p.src.medium, large: p.src.large, original: p.src.original },
     width: p.width, height: p.height, pageUrl: p.url,
@@ -880,6 +898,7 @@ async function fetchUnsplash(q, page) {
   const items = (data.results || []).map(p => ({
     id: 'us_' + p.id, source: 'Unsplash',
     title: p.description || p.alt_description || 'Unsplash photo', photographer: p.user?.name,
+    photographerUrl: p.user?.links?.html, downloadLocation: p.links?.download_location,
     thumb: p.urls.regular,
     srcSet: { small: p.urls.thumb, medium: p.urls.small, large: p.urls.regular, original: p.urls.full },
     width: p.width, height: p.height, pageUrl: p.links.html,
@@ -895,6 +914,7 @@ async function fetchPixabay(q, page) {
   const items = (data.hits || []).map(p => ({
     id: 'pb_' + p.id, source: 'Pixabay',
     title: p.tags || 'Pixabay image', photographer: p.user,
+    photographerUrl: p.user_id ? `https://pixabay.com/users/${encodeURIComponent(p.user)}-${p.user_id}/` : '',
     thumb: p.webformatURL,
     srcSet: { small: p.previewURL, medium: p.webformatURL, large: p.largeImageURL, original: p.fullHDURL || p.largeImageURL },
     width: p.imageWidth, height: p.imageHeight, pageUrl: p.pageURL,
@@ -914,7 +934,7 @@ async function fetchOpenverse(q, page) {
     const licLabel = p.license_version ? (p.license || '').toUpperCase() + ' ' + p.license_version : (p.license || '').toUpperCase();
     return {
       id: 'ov_' + p.id, source: 'Openverse',
-      title: p.title || 'Openverse image', photographer: p.creator || 'Unknown',
+      title: p.title || 'Openverse image', photographer: p.creator || 'Unknown', photographerUrl: p.creator_url || '',
       thumb: p.thumbnail || p.url,
       srcSet: { small: p.thumbnail || p.url, medium: p.url, large: p.url, original: p.url },
       width: p.width || null, height: p.height || null,
@@ -1041,6 +1061,37 @@ function longDims(img) {
   return img.measuring ? 'Measuring…' : 'Unknown';
 }
 
+// ---- Attribution ----
+// Value of utm_source on links back to Unsplash; should match the app name registered with Unsplash
+const UNSPLASH_APP_NAME = 'luminary';
+const SOURCE_HOMES = {
+  Pexels: 'https://www.pexels.com', Unsplash: 'https://unsplash.com', Pixabay: 'https://pixabay.com',
+  Openverse: 'https://openverse.org', Wikimedia: 'https://commons.wikimedia.org',
+  NASA: 'https://images.nasa.gov', Iconify: 'https://icon-sets.iconify.design',
+};
+
+// Unsplash requires a referral tag on every link back to its site
+function attributionUrl(url, img) {
+  const safe = safeUrl(url);
+  if (!safe || img.source !== 'Unsplash') return safe;
+  const u = new URL(safe);
+  u.searchParams.set('utm_source', UNSPLASH_APP_NAME);
+  u.searchParams.set('utm_medium', 'referral');
+  return u.toString();
+}
+
+// "Photo by <photographer> on <source>", with links when available. Returns safe HTML.
+function creditHtml(img) {
+  const link = (url, text) => {
+    const href = attributionUrl(url, img);
+    return href ? `<a href="${escHtml(href)}" target="_blank" rel="noopener">${escHtml(text)}</a>` : escHtml(text);
+  };
+  const name = img.photographer && img.photographer !== 'Unknown' ? img.photographer : '';
+  const site = link(SOURCE_HOMES[img.source], img.source);
+  if (img.mediaType === 'icon') return `Icon from ${link(img.pageUrl, name || 'an open-source set')} on ${site}`;
+  return name ? `Photo by ${link(img.photographerUrl, name)} on ${site}` : `Image from ${site}`;
+}
+
 // ---- Rendering ----
 function cardLabel(img) {
   const license = img.isCC0 ? 'free to use' : 'attribution required';
@@ -1068,13 +1119,14 @@ function buildCard(img) {
       <span class="img-source-badge">${escHtml(img.source)}</span>
       <span class="img-dims dims-short">${shortDims(img)}</span>
     </div>` +
+    `<div class="img-credit">${creditHtml(img)}</div>` +
     `<div class="img-list-detail">
       <div class="list-top">
         <div class="list-title">${escHtml(img.title)}</div>
         <span class="list-source-badge">${escHtml(img.source)}</span>
       </div>
       <div class="list-attrs">
-        <div class="list-attr"><span class="list-attr-label">By</span><span class="list-attr-val">${escHtml(img.photographer || 'Unknown')}</span></div>
+        <div class="list-attr"><span class="list-attr-label">Credit</span><span class="list-attr-val img-credit-inline">${creditHtml(img)}</span></div>
         <div class="list-attr"><span class="list-attr-label">Dimensions</span><span class="list-attr-val dims-long">${longDims(img)}</span></div>
         <div class="list-attr"><span class="list-attr-label">License</span><span class="list-attr-val">${escHtml(img.license)}</span></div>
       </div>
@@ -1083,7 +1135,7 @@ function buildCard(img) {
         <span class="list-cc-badge ${badgeClass}">${badgeLabel}</span>
         <button type="button" class="list-action dl-btn">&#x2193; Download</button>
         <button type="button" class="list-action credit-btn">Copy credit</button>
-        <a class="list-action" href="${escHtml(safeUrl(img.pageUrl))}" target="_blank" rel="noopener">Source &#x2197;</a>
+        <a class="list-action" href="${escHtml(attributionUrl(img.pageUrl, img))}" target="_blank" rel="noopener">Source &#x2197;</a>
       </div>
     </div>`;
 
@@ -1246,7 +1298,7 @@ function showModalItem(img) {
   licenseEl.append(strong, ' — ' + img.licenseNote);
 
   $('modalCredit').textContent = creditText(img);
-  $('modalOpen').href = safeUrl(img.pageUrl) || '#';
+  $('modalOpen').href = attributionUrl(img.pageUrl, img) || '#';
   const url = img.srcSet.original || img.thumb;
   $('modalUrl').value = url;
   imgEl.style.opacity = '0.5';
@@ -1258,17 +1310,9 @@ function showModalItem(img) {
 }
 
 function renderModalAttrs(img) {
-  const attrs = $('modalAttrs');
-  attrs.innerHTML = '';
-  const row = (label, value) => {
-    const div = document.createElement('div');
-    div.className = 'attr-row';
-    div.innerHTML = `<span class="attr-label">${label}</span><span class="attr-val"></span>`;
-    div.lastChild.textContent = value;
-    attrs.appendChild(div);
-  };
-  if (img.photographer) row('By', img.photographer);
-  row('Size', longDims(img));
+  $('modalAttrs').innerHTML =
+    `<div class="attr-row"><span class="attr-label">Credit</span><span class="attr-val img-credit-inline">${creditHtml(img)}</span></div>` +
+    `<div class="attr-row"><span class="attr-label">Size</span><span class="attr-val">${escHtml(longDims(img))}</span></div>`;
 }
 
 function navigateModal(dir) {
@@ -1336,6 +1380,7 @@ function copyImage() {
   btn.dataset.label = btn.textContent;
   btn.textContent = 'Copying…';
   // Passing a promise keeps the write inside the click's user gesture, which Safari requires
+  trackDownload(currentModal);
   const item = new ClipboardItem({ 'image/png': imageUrlToPng(url) });
   navigator.clipboard.write([item]).then(
     () => flash(btn, 'Image copied!'),
@@ -1408,7 +1453,14 @@ function saveBlob(blob, name) {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
+// Unsplash counts a download whenever a photo is downloaded or otherwise put to use
+function trackDownload(img) {
+  if (img.source !== 'Unsplash' || !img.downloadLocation) return;
+  fetch(`${PROXY_URL}/unsplash-download?url=${encodeURIComponent(img.downloadLocation)}`).catch(() => {});
+}
+
 async function downloadItem(img, btn) {
+  trackDownload(img);
   const label = btn.textContent;
   btn.textContent = 'Downloading…';
   btn.disabled = true;
@@ -1494,7 +1546,7 @@ function makeZip(files) {
 }
 
 // ---- Collection ----
-const STORED_FIELDS = ['id', 'source', 'title', 'photographer', 'thumb', 'srcSet', 'width', 'height', 'pageUrl', 'license', 'licenseNote', 'isCC0', 'mediaType'];
+const STORED_FIELDS = ['id', 'source', 'title', 'photographer', 'photographerUrl', 'downloadLocation', 'thumb', 'srcSet', 'width', 'height', 'pageUrl', 'license', 'licenseNote', 'isCC0', 'mediaType'];
 
 function loadCollection() {
   try {
@@ -1513,7 +1565,7 @@ function inCollection(id) { return collection.some(c => c.id === id); }
 
 function toggleCollection(img) {
   if (inCollection(img.id)) collection = collection.filter(c => c.id !== img.id);
-  else collection.push(Object.fromEntries(STORED_FIELDS.map(f => [f, img[f]])));
+  else collection.push({ ...Object.fromEntries(STORED_FIELDS.map(f => [f, img[f]])), savedAt: Date.now() });
   saveCollection();
   refreshCollectionUI(img.id);
 }
@@ -1546,6 +1598,26 @@ function openCollection() {
   $('collectionOverlay').classList.add('open');
   syncOverlays();
   $('collectionClose').focus();
+  refreshPixabayLinks().then(changed => { if (changed && isOpen('collectionOverlay')) renderCollection(); });
+}
+
+// Pixabay image links are for temporary display only, so saved items get fresh links when they're over a day old
+const PIXABAY_REFRESH_MS = 20 * 60 * 60 * 1000;
+async function refreshPixabayLinks() {
+  const stale = collection.filter(i => i.source === 'Pixabay' && Date.now() - (i.savedAt || 0) > PIXABAY_REFRESH_MS);
+  await Promise.all(stale.map(async item => {
+    try {
+      const id = item.id.replace(/^pb_/, '');
+      const res = await keyedFetch('pixabay', { id });
+      const hit = res.ok && (await res.json()).hits?.[0];
+      if (!hit || String(hit.id) !== id) return;
+      item.thumb = hit.webformatURL;
+      item.srcSet = { small: hit.previewURL, medium: hit.webformatURL, large: hit.largeImageURL, original: hit.fullHDURL || hit.largeImageURL };
+      item.savedAt = Date.now();
+    } catch { /* keep the old links; the zip lists any that fail */ }
+  }));
+  if (stale.length) saveCollection();
+  return stale.length > 0;
 }
 
 function closeCollection() {
@@ -1572,6 +1644,7 @@ function renderCollection() {
     li.innerHTML =
       `<button type="button" class="card-hit" aria-label="${escHtml(truncate(img.title, 120) + ' — ' + img.source)}"></button>` +
       `<img src="${escHtml(safeUrl(img.thumb))}" alt="" loading="lazy">` +
+      `<div class="collection-credit">${creditHtml(img)}</div>` +
       `<button type="button" class="collection-remove" aria-label="Remove ${escHtml(truncate(img.title, 60))} from collection">&#x2715;</button>`;
     const hit = li.querySelector('.card-hit');
     hit.addEventListener('click', () => openModal(img, collection.slice(), hit));
@@ -1602,11 +1675,14 @@ async function downloadCollectionZip() {
   if (!collection.length) return;
   const btn = $('zipBtn');
   btn.disabled = true;
+  btn.textContent = 'Preparing…';
+  await refreshPixabayLinks();
   const items = collection.slice();
   const files = [], failed = [];
   for (let i = 0; i < items.length; i++) {
     btn.textContent = `Preparing ${i + 1} of ${items.length}…`;
     try {
+      trackDownload(items[i]);
       const blob = await fetchImageBlob(items[i]);
       const name = `${String(i + 1).padStart(2, '0')}-${fileSlug(items[i])}.${EXTENSIONS[blob.type] || 'jpg'}`;
       files.push({ name, data: new Uint8Array(await blob.arrayBuffer()) });
@@ -1667,6 +1743,7 @@ async function sendToStashly() {
 
   try {
     const img = currentModal;
+    trackDownload(img);
     const res = await fetch('http://127.0.0.1:9473/api/ingest', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

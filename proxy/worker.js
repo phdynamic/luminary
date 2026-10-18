@@ -10,23 +10,53 @@
 // Or from this folder with the Wrangler CLI: `npx wrangler deploy`, then
 // `npx wrangler secret put PEXELS_KEY` (and the same for UNSPLASH_KEY and PIXABAY_KEY).
 
+const unsplashAuth = (upstream, headers, env) => headers.set('Authorization', `Client-ID ${env.UNSPLASH_KEY}`);
+
+// Each route builds the upstream URL from the incoming query, copying only parameters the app uses,
+// so the proxy can't be pointed at other endpoints. cacheSeconds sets how long browsers may reuse a response.
 const ROUTES = {
   pexels: {
-    url: 'https://api.pexels.com/v1/search',
-    params: ['query', 'per_page', 'page'],
+    build: q => forward('https://api.pexels.com/v1/search', q, ['query', 'per_page', 'page']),
     sign: (upstream, headers, env) => headers.set('Authorization', env.PEXELS_KEY),
+    cacheSeconds: 300,
   },
   unsplash: {
-    url: 'https://api.unsplash.com/search/photos',
-    params: ['query', 'per_page', 'page', 'content_filter'],
-    sign: (upstream, headers, env) => headers.set('Authorization', `Client-ID ${env.UNSPLASH_KEY}`),
+    build: q => forward('https://api.unsplash.com/search/photos', q, ['query', 'per_page', 'page', 'content_filter']),
+    sign: unsplashAuth,
+    cacheSeconds: 300,
+  },
+  // Unsplash requires a photo's download_location to be called whenever a user downloads it
+  'unsplash-download': {
+    build: q => unsplashDownloadUrl(q.get('url')),
+    sign: unsplashAuth,
+    cacheSeconds: 0,
   },
   pixabay: {
-    url: 'https://pixabay.com/api/',
-    params: ['q', 'per_page', 'page', 'safesearch'],
+    build: q => forward('https://pixabay.com/api/', q, ['q', 'id', 'per_page', 'page', 'safesearch']),
     sign: (upstream, headers, env) => upstream.searchParams.set('key', env.PIXABAY_KEY),
+    cacheSeconds: 86400, // Pixabay asks that API requests be cached for 24 hours
   },
 };
+
+function forward(base, query, names) {
+  const upstream = new URL(base);
+  for (const name of names) {
+    const value = query.get(name);
+    if (value !== null) upstream.searchParams.set(name, value.slice(0, 200));
+  }
+  return upstream;
+}
+
+function unsplashDownloadUrl(raw) {
+  try {
+    const u = new URL(raw);
+    if (u.protocol !== 'https:' || u.host !== 'api.unsplash.com' || !/^\/photos\/[\w-]+\/download$/.test(u.pathname)) return null;
+    u.searchParams.delete('client_id');
+    return u;
+  } catch {
+    return null;
+  }
+}
 
 function corsHeaders(origin, env) {
   const allowed = (env.ALLOWED_ORIGINS || '*').split(',').map(s => s.trim()).filter(Boolean);
@@ -50,12 +80,8 @@ export default {
     const route = ROUTES[url.pathname.replace(/^\/+|\/+$/g, '')];
     if (!route) return new Response('Not found', { status: 404, headers: cors });
 
-    // Forward only the parameters the app uses, so the proxy can't be used to reach other endpoints
-    const upstream = new URL(route.url);
-    for (const name of route.params) {
-      const value = url.searchParams.get(name);
-      if (value !== null) upstream.searchParams.set(name, value.slice(0, 200));
-    }
+    const upstream = route.build(url.searchParams);
+    if (!upstream) return new Response('Bad request', { status: 400, headers: cors });
     const headers = new Headers({ Accept: 'application/json' });
     route.sign(upstream, headers, env);
 
@@ -65,7 +91,7 @@ export default {
       headers: {
         ...cors,
         'Content-Type': res.headers.get('Content-Type') || 'application/json',
-        'Cache-Control': 'public, max-age=300',
+        'Cache-Control': route.cacheSeconds ? `public, max-age=${route.cacheSeconds}` : 'no-store',
       },
     });
   },

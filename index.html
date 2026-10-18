@@ -18,10 +18,10 @@
     --purple2: #c9a8ff;
     --purple3: #7c5cbf;
     --accent: #e0c8ff;
-    --muted: #7a6e99;
+    --muted: #958ab5;
     --text: #ede8ff;
     --text2: #b8aed4;
-    --text3: #7a6e99;
+    --text3: #958ab5;
     --danger: #ff6b8a;
     --success: #7affb8;
     --tag-bg: rgba(168,127,255,0.12);
@@ -55,18 +55,22 @@
   .app { position: relative; z-index: 1; max-width: 1300px; margin: 0 auto; padding: 0 24px 80px; }
 
   /* ---- Header ---- */
-  header { padding: 40px 0 36px; display: flex; flex-direction: column; gap: 4px; }
+  header { padding: 40px 0 36px; display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .brand { display: flex; flex-direction: column; gap: 4px; }
+  .btn-collection { background: transparent; border: 1px solid var(--border2); color: var(--text2); font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; padding: 8px 16px; border-radius: 20px; cursor: pointer; transition: border-color 0.15s, color 0.15s; white-space: nowrap; }
+  .btn-collection:hover { border-color: var(--purple); color: var(--purple2); }
+  .btn-collection .star { color: #ffd166; }
   .logo { font-family: 'Syne', sans-serif; font-size: 28px; font-weight: 800; letter-spacing: -0.5px; color: var(--accent); }
   .logo span { color: var(--purple); }
   .tagline { font-size: 13px; color: var(--muted); font-weight: 300; letter-spacing: 0.02em; }
 
   /* ---- Search Area ---- */
   .search-area { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 24px; margin-bottom: 24px; display: flex; flex-direction: column; gap: 16px; }
-  .search-row { display: flex; gap: 10px; align-items: stretch; }
+  .search-row { display: flex; gap: 10px; align-items: stretch; margin: 0; }
   .search-input-wrap { flex: 1; position: relative; }
   .search-input-wrap svg { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
   #searchQuery { width: 100%; background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius2); color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 15px; padding: 11px 14px 11px 42px; outline: none; transition: border-color 0.2s; }
-  #searchQuery:focus { border-color: var(--purple3); }
+  #searchQuery:focus { border-color: var(--purple2); box-shadow: 0 0 0 1px var(--purple2); }
   .btn-search { background: var(--purple3); border: 1px solid var(--purple); color: var(--accent); font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 600; padding: 11px 28px; border-radius: var(--radius2); cursor: pointer; transition: background 0.2s, transform 0.1s; white-space: nowrap; }
   .btn-search:hover { background: rgba(124,92,191,0.9); }
   .btn-search:active { transform: scale(0.98); }
@@ -74,7 +78,7 @@
   .controls-row { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
   .filters-row { border-top: 1px solid var(--border); padding-top: 14px; margin-top: 2px; }
   .control-group { display: flex; flex-direction: column; gap: 6px; }
-  .control-group > label { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+  .group-label { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
 
   /* Source chips */
   .source-chips { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -131,7 +135,13 @@
     position: relative;
     display: block; /* grid default */
   }
-  .img-card:hover { border-color: var(--purple3); transform: translateY(-2px); }
+  .img-card:hover, .img-card:focus-within { border-color: var(--purple3); transform: translateY(-2px); }
+  .card-hit { position: absolute; inset: 0; z-index: 1; width: 100%; background: transparent; border: 0; padding: 0; cursor: pointer; border-radius: inherit; }
+  .card-hit:focus-visible { outline: 2px solid var(--purple2); outline-offset: -2px; }
+  .star-btn { position: absolute; top: 8px; left: 8px; z-index: 2; width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border2); background: rgba(13,11,20,0.85); color: var(--text2); font-size: 16px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.15s, color 0.15s, border-color 0.15s; }
+  .img-card:hover .star-btn, .img-card:focus-within .star-btn, .star-btn[aria-pressed="true"] { opacity: 1; }
+  .star-btn[aria-pressed="true"] { color: #ffd166; border-color: rgba(255,209,102,0.5); }
+  @media (hover: none) { .star-btn { opacity: 1; } }
 
   /* Grid thumbnail */
   .img-thumb { width: 100%; aspect-ratio: 4/3; object-fit: cover; display: block; background: var(--bg3); }
@@ -143,7 +153,7 @@
   .img-dims { font-size: 11px; color: var(--text3); }
 
   /* License badge — grid (absolute over image) */
-  .license-badge { position: absolute; top: 8px; right: 8px; font-size: 10px; padding: 2px 7px; border-radius: 4px; font-weight: 600; letter-spacing: 0.05em; }
+  .license-badge { pointer-events: none; position: absolute; top: 8px; right: 8px; font-size: 10px; padding: 2px 7px; border-radius: 4px; font-weight: 600; letter-spacing: 0.05em; }
   .license-free { background: #1a1628; color: #7affb8; border: 1px solid rgba(127,255,184,0.25); }
   .license-cc0 { background: #1a1628; color: #7affb8; border: 1px solid rgba(127,255,184,0.25); }
   .license-ccby { background: #1a1628; color: #e5a423; border: 1px solid rgba(229,164,35,0.25); }
@@ -159,6 +169,7 @@
   #resultsGrid.compact-view .img-thumb { aspect-ratio: 1/1; }
   #resultsGrid.compact-view .img-grid-footer { display: none; }
   #resultsGrid.compact-view .license-badge { font-size: 8px; padding: 1px 5px; top: 4px; right: 4px; }
+  #resultsGrid.compact-view .star-btn { width: 26px; height: 26px; font-size: 13px; top: 4px; left: 4px; }
 
   /* ---- LIST VIEW ---- */
   #resultsGrid.list-view {
@@ -217,7 +228,7 @@
   .list-license-pill { font-size: 11px; color: var(--text3); background: var(--tag-bg); border: 1px solid var(--border); border-radius: 5px; padding: 3px 9px; display: inline-block; }
   .list-cc-badge { font-size: 10px; font-weight: 700; padding: 3px 7px; border-radius: 4px; letter-spacing: 0.05em; }
   .list-bottom { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-  .list-action { font-size: 11px; font-weight: 500; color: var(--purple2); background: transparent; border: 1px solid var(--border2); border-radius: 5px; padding: 5px 11px; cursor: pointer; white-space: nowrap; text-decoration: none; transition: background 0.15s; display: inline-block; }
+  .list-action { position: relative; z-index: 2; font-family: 'DM Sans', sans-serif; font-size: 11px; font-weight: 500; color: var(--purple2); background: transparent; border: 1px solid var(--border2); border-radius: 5px; padding: 5px 11px; cursor: pointer; white-space: nowrap; text-decoration: none; transition: background 0.15s; display: inline-block; }
   .list-action:hover { background: var(--tag-bg); }
 
   /* ---- States ---- */
@@ -226,11 +237,21 @@
   .state-box p { font-size: 14px; }
   .spinner { width: 36px; height: 36px; border: 2px solid var(--border2); border-top-color: var(--purple); border-radius: 50%; animation: spin 0.7s linear infinite; margin: 0 auto 16px; }
   @keyframes spin { to { transform: rotate(360deg); } }
+  .hidden-count { color: var(--text3); }
+  .empty-tips { list-style: none; display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 16px 0 4px; }
+  .empty-tips li { font-size: 13px; color: var(--text2); }
+  .tip-btn { background: var(--tag-bg); border: 1px solid var(--border2); color: var(--purple2); font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; padding: 5px 12px; border-radius: 6px; cursor: pointer; margin-right: 6px; }
+  .tip-btn:hover { border-color: var(--purple); }
+  .empty-note { font-size: 12px !important; color: var(--text3); margin-top: 12px; }
+  .scroll-status { text-align: center; padding: 28px 0 8px; color: var(--text3); font-size: 13px; min-height: 1px; }
+  .scroll-status .spinner { width: 24px; height: 24px; margin: 0 auto 8px; }
+  .scroll-status p { margin-bottom: 4px; }
   .error-msg { background: rgba(255,107,138,0.08); border: 1px solid rgba(255,107,138,0.2); border-radius: var(--radius2); color: var(--danger); padding: 12px 16px; font-size: 13px; margin-bottom: 16px; }
 
   /* ---- Modal ---- */
   .modal-overlay { position: fixed; inset: 0; background: rgba(8,6,16,0.85); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(4px); opacity: 0; pointer-events: none; transition: opacity 0.2s; }
   .modal-overlay.open { opacity: 1; pointer-events: all; }
+  #modalOverlay { z-index: 110; }
   .modal { position: relative; background: var(--bg2); border: 1px solid var(--border2); border-radius: 16px; max-width: 1100px; width: 100%; max-height: 92vh; overflow-y: auto; display: grid; grid-template-columns: 3fr 2fr; transform: scale(0.96); transition: transform 0.2s; }
   .modal-overlay.open .modal { transform: scale(1); }
   .modal-img-pane { background: var(--bg3); border-radius: 16px 0 0 16px; overflow: hidden; display: flex; align-items: center; justify-content: center; min-height: 420px; }
@@ -252,17 +273,49 @@
   .attr-val { color: var(--text2); flex: 1; word-break: break-all; }
   .license-info { background: var(--tag-bg); border: 1px solid var(--border); border-radius: var(--radius2); padding: 10px 14px; font-size: 12px; color: var(--text2); line-height: 1.5; }
   .license-info strong { color: var(--purple2); }
+  .modal-size-label { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 6px; }
+  .credit-box { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius2); color: var(--text2); font-size: 12px; line-height: 1.5; padding: 8px 10px; word-break: break-word; margin-bottom: 8px; }
+  .modal-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .btn-copy[aria-pressed="true"] { color: #ffd166; border-color: rgba(255,209,102,0.5); }
   .url-copy-row { display: flex; gap: 8px; }
   .url-copy-row input { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius2); color: var(--text3); font-family: 'DM Sans', sans-serif; font-size: 12px; padding: 8px 10px; outline: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .btn-copy { background: var(--surface2); border: 1px solid var(--border2); color: var(--purple2); font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 500; padding: 8px 14px; border-radius: var(--radius2); cursor: pointer; transition: background 0.15s; white-space: nowrap; }
   .btn-copy:hover { background: var(--tag-bg); }
   .btn-copy.copied { color: var(--success); }
+  .btn-copy.failed { color: var(--danger); }
+  .btn-copy:disabled { opacity: 0.6; cursor: default; }
+  .btn-danger { color: var(--danger); border-color: rgba(255,107,138,0.35); }
   .btn-download { width: 100%; background: var(--purple3); border: 1px solid var(--purple); color: var(--accent); font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; padding: 13px; border-radius: var(--radius2); cursor: pointer; transition: background 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; }
   .btn-download:disabled { opacity: 0.6; cursor: default; }
   .btn-download:hover { background: rgba(124,92,191,0.85); }
   .btn-open { width: 100%; background: transparent; border: 1px solid var(--border2); color: var(--text2); font-family: 'DM Sans', sans-serif; font-size: 13px; padding: 10px; border-radius: var(--radius2); cursor: pointer; transition: border-color 0.15s, color 0.15s; text-align: center; text-decoration: none; display: block; }
   .btn-open:hover { border-color: var(--purple3); color: var(--purple2); }
   .btn-row { display: flex; flex-direction: column; gap: 8px; }
+
+  /* ---- Collection panel ---- */
+  .collection-panel { background: var(--bg2); border: 1px solid var(--border2); border-radius: 16px; max-width: 920px; width: 100%; max-height: 88vh; display: flex; flex-direction: column; overflow: hidden; }
+  .collection-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 20px 24px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .collection-title { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 700; color: var(--accent); }
+  .collection-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .collection-body { padding: 20px 24px; overflow-y: auto; }
+  .collection-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; list-style: none; }
+  .collection-item { position: relative; border-radius: var(--radius2); overflow: hidden; border: 1px solid var(--border); background: var(--surface); }
+  .collection-item:hover, .collection-item:focus-within { border-color: var(--purple3); }
+  .collection-item img { width: 100%; aspect-ratio: 1/1; object-fit: cover; display: block; background: var(--bg3); }
+  .collection-item.icon-card img { background: #fff; object-fit: contain; padding: 12px; }
+  .collection-remove { position: absolute; top: 6px; right: 6px; z-index: 2; width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--border2); background: rgba(13,11,20,0.85); color: var(--text2); font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .collection-remove:hover { color: var(--danger); border-color: rgba(255,107,138,0.5); }
+  .collection-empty { text-align: center; color: var(--text3); padding: 40px 0; font-size: 14px; }
+
+  /* ---- Accessibility ---- */
+  :focus-visible { outline: 2px solid var(--purple2); outline-offset: 2px; }
+  #searchQuery:focus-visible { outline: none; }
+  .toggle-switch input:focus-visible + .toggle-track { outline: 2px solid var(--purple2); outline-offset: 2px; }
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition: none !important; animation-duration: 1.5s !important; }
+    .img-card:hover, .img-card:focus-within { transform: none; }
+  }
 
   ::-webkit-scrollbar { width: 6px; height: 6px; }
   ::-webkit-scrollbar-track { background: var(--bg2); }
@@ -309,50 +362,54 @@
     }
     .modal-nav.prev { left: 8px; }
     .modal-nav.next { right: 8px; }
+    .collection-head, .collection-body { padding: 16px; }
+    .collection-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
   }
 </style>
 </head>
 <body>
-<div class="app">
+<div class="app" id="app">
 
   <header>
-    <div class="logo">Lumi<span>nary</span></div>
-    <div class="tagline">Free-to-use images for education</div>
+    <div class="brand">
+      <h1 class="logo">Lumi<span>nary</span></h1>
+      <div class="tagline">Free-to-use images for education</div>
+    </div>
+    <button type="button" class="btn-collection" id="collectionBtn" onclick="openCollection()" aria-haspopup="dialog">
+      <span class="star" aria-hidden="true">&#x2605;</span> Collection (<span id="collectionCount">0</span>)
+    </button>
   </header>
 
-  <!-- Search Panel -->
-  <!-- Search Area -->
+  <main>
   <div class="search-area">
-    <div class="search-row">
+    <form class="search-row" role="search" onsubmit="event.preventDefault(); doSearch();">
       <div class="search-input-wrap">
-        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
           <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
         </svg>
-        <input type="text" id="searchQuery" placeholder='Search for images... e.g. "student studying"' onkeydown="if(event.key==='Enter') doSearch()">
+        <input type="search" id="searchQuery" aria-label="Search for images" placeholder='Search for images... e.g. "student studying"'>
       </div>
-      <button class="btn-search" onclick="doSearch()">Search</button>
-    </div>
+      <button type="submit" class="btn-search">Search</button>
+    </form>
 
     <div class="controls-row">
-      <!-- Sources -->
-      <div class="control-group">
-        <label>Sources</label>
+      <div class="control-group" role="group" aria-labelledby="grp-sources">
+        <span class="group-label" id="grp-sources">Sources</span>
         <div class="source-chips">
-          <button class="chip active" id="chip-pexels" onclick="toggleChip('pexels')"><span class="dot dot-pexels"></span>Pexels</button>
-          <button class="chip active" id="chip-unsplash" onclick="toggleChip('unsplash')"><span class="dot dot-unsplash"></span>Unsplash</button>
-          <button class="chip active" id="chip-pixabay" onclick="toggleChip('pixabay')"><span class="dot dot-pixabay"></span>Pixabay</button>
-          <button class="chip active" id="chip-openverse" onclick="toggleChip('openverse')"><span class="dot dot-openverse"></span>Openverse</button>
-          <button class="chip active" id="chip-wikimedia" onclick="toggleChip('wikimedia')"><span class="dot dot-wikimedia"></span>Wikimedia</button>
-          <button class="chip active" id="chip-nasa" onclick="toggleChip('nasa')"><span class="dot dot-nasa"></span>NASA</button>
-          <button class="chip active" id="chip-iconify" onclick="toggleChip('iconify')"><span class="dot dot-iconify"></span>Iconify</button>
+          <button type="button" class="chip active" id="chip-pexels" aria-pressed="true" onclick="toggleChip('pexels')"><span class="dot dot-pexels" aria-hidden="true"></span>Pexels</button>
+          <button type="button" class="chip active" id="chip-unsplash" aria-pressed="true" onclick="toggleChip('unsplash')"><span class="dot dot-unsplash" aria-hidden="true"></span>Unsplash</button>
+          <button type="button" class="chip active" id="chip-pixabay" aria-pressed="true" onclick="toggleChip('pixabay')"><span class="dot dot-pixabay" aria-hidden="true"></span>Pixabay</button>
+          <button type="button" class="chip active" id="chip-openverse" aria-pressed="true" onclick="toggleChip('openverse')"><span class="dot dot-openverse" aria-hidden="true"></span>Openverse</button>
+          <button type="button" class="chip active" id="chip-wikimedia" aria-pressed="true" onclick="toggleChip('wikimedia')"><span class="dot dot-wikimedia" aria-hidden="true"></span>Wikimedia</button>
+          <button type="button" class="chip active" id="chip-nasa" aria-pressed="true" onclick="toggleChip('nasa')"><span class="dot dot-nasa" aria-hidden="true"></span>NASA</button>
+          <button type="button" class="chip active" id="chip-iconify" aria-pressed="true" onclick="toggleChip('iconify')"><span class="dot dot-iconify" aria-hidden="true"></span>Iconify</button>
         </div>
       </div>
     </div>
 
     <div class="controls-row filters-row">
-      <!-- License filter toggles -->
-      <div class="control-group">
-        <label>License</label>
+      <div class="control-group" role="group" aria-labelledby="grp-license">
+        <span class="group-label" id="grp-license">License</span>
         <div class="toggle-wrap">
           <label class="toggle-switch">
             <input type="checkbox" id="freeOnlyToggle" onchange="setLicenseFilter('free')">
@@ -369,9 +426,8 @@
         </div>
       </div>
 
-      <!-- Size filter -->
-      <div class="control-group">
-        <label>Size</label>
+      <div class="control-group" role="group" aria-labelledby="grp-size">
+        <span class="group-label" id="grp-size">Size</span>
         <div class="toggle-wrap">
           <label class="toggle-switch">
             <input type="checkbox" id="lgOnlyToggle" onchange="setSizeFilter('large')">
@@ -388,9 +444,8 @@
         </div>
       </div>
 
-      <!-- Orientation filter -->
-      <div class="control-group">
-        <label>Orientation</label>
+      <div class="control-group" role="group" aria-labelledby="grp-orientation">
+        <span class="group-label" id="grp-orientation">Orientation</span>
         <div class="toggle-wrap">
           <label class="toggle-switch">
             <input type="checkbox" id="landscapeToggle" onchange="setOrientationFilter('landscape')">
@@ -414,9 +469,8 @@
         </div>
       </div>
 
-      <!-- Type filter -->
-      <div class="control-group">
-        <label>Type</label>
+      <div class="control-group" role="group" aria-labelledby="grp-type">
+        <span class="group-label" id="grp-type">Type</span>
         <div class="toggle-wrap">
           <label class="toggle-switch">
             <input type="checkbox" id="photoToggle" onchange="setTypeFilter('photo')">
@@ -442,23 +496,21 @@
     </div>
   </div>
 
-  <!-- Error -->
-  <div id="errorBox" class="error-msg hidden"></div>
+  <div id="errorBox" class="error-msg hidden" role="alert"></div>
 
-  <!-- Results header -->
   <div class="results-header" id="resultsHeader" style="display:none;">
     <div class="results-count" id="resultsCount"></div>
-    <div class="view-toggle">
-      <button class="view-btn active" id="btn-grid" onclick="setViewMode('grid')" title="Grid view">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+    <div class="view-toggle" role="group" aria-label="Layout">
+      <button type="button" class="view-btn active" id="btn-grid" onclick="setViewMode('grid')" title="Grid view" aria-label="Grid view" aria-pressed="true">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
           <rect x="1" y="1" width="6" height="6" rx="1"/>
           <rect x="9" y="1" width="6" height="6" rx="1"/>
           <rect x="1" y="9" width="6" height="6" rx="1"/>
           <rect x="9" y="9" width="6" height="6" rx="1"/>
         </svg>
       </button>
-      <button class="view-btn" id="btn-compact" onclick="setViewMode('compact')" title="Compact view">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+      <button type="button" class="view-btn" id="btn-compact" onclick="setViewMode('compact')" title="Compact view" aria-label="Compact view" aria-pressed="false">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
           <rect x="1" y="1" width="3.5" height="3.5" rx="0.5"/>
           <rect x="6.25" y="1" width="3.5" height="3.5" rx="0.5"/>
           <rect x="11.5" y="1" width="3.5" height="3.5" rx="0.5"/>
@@ -470,8 +522,8 @@
           <rect x="11.5" y="11.5" width="3.5" height="3.5" rx="0.5"/>
         </svg>
       </button>
-      <button class="view-btn" id="btn-list" onclick="setViewMode('list')" title="List view">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+      <button type="button" class="view-btn" id="btn-list" onclick="setViewMode('list')" title="List view" aria-label="List view" aria-pressed="false">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
           <rect x="1" y="2" width="14" height="2.5" rx="1"/>
           <rect x="1" y="6.75" width="14" height="2.5" rx="1"/>
           <rect x="1" y="11.5" width="14" height="2.5" rx="1"/>
@@ -480,249 +532,300 @@
     </div>
   </div>
 
-  <!-- Results -->
-  <div id="resultsGrid"></div>
+  <div id="resultsGrid" role="list" aria-label="Search results"></div>
 
-  <!-- Initial state -->
   <div class="state-box" id="stateBox">
-    <div class="big">&#x2728;</div>
+    <div class="big" aria-hidden="true">&#x2728;</div>
     <p>Enter a search term and choose your sources to find free educational images.</p>
   </div>
 
+  <div class="scroll-status" id="scrollStatus"></div>
+  </main>
 
-<!-- Modal -->
-<div class="modal-overlay" id="modalOverlay" onclick="closeModalOnBg(event)">
-  <div class="modal" id="modal">
-    <button class="modal-nav prev" id="modalPrev" onclick="navigateModal(-1)">&#x2039;</button>
-    <button class="modal-nav next" id="modalNext" onclick="navigateModal(1)">&#x203A;</button>
+  <div class="sr-only" id="srStatus" role="status" aria-live="polite"></div>
+</div>
+
+<!-- Image details -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModalOnBg(event)" inert>
+  <div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <button type="button" class="modal-nav prev" id="modalPrev" onclick="navigateModal(-1)" aria-label="Previous image">&#x2039;</button>
+    <button type="button" class="modal-nav next" id="modalNext" onclick="navigateModal(1)" aria-label="Next image">&#x203A;</button>
     <div class="modal-img-pane">
       <img id="modalImg" src="" alt="">
     </div>
     <div class="modal-info-pane">
       <div class="modal-top">
         <span class="modal-source-tag" id="modalSource"></span>
-        <button class="btn-close" onclick="closeModal()">&#x2715;</button>
+        <button type="button" class="btn-close" id="modalClose" onclick="closeModal()" aria-label="Close">&#x2715;</button>
       </div>
-      <div class="modal-title" id="modalTitle"></div>
+      <h2 class="modal-title" id="modalTitle"></h2>
       <div class="modal-attrs" id="modalAttrs"></div>
       <div class="license-info" id="modalLicense"></div>
       <div>
-        <div class="modal-size-label" style="margin-bottom:6px;">Image URL</div>
+        <div class="modal-size-label" id="creditLabel">Credit line</div>
+        <div class="credit-box" id="modalCredit" aria-labelledby="creditLabel"></div>
+        <div class="modal-actions">
+          <button type="button" class="btn-copy" id="copyCreditBtn" onclick="copyCredit()">Copy credit</button>
+          <button type="button" class="btn-copy" id="copyImageBtn" onclick="copyImage()">Copy image</button>
+          <button type="button" class="btn-copy" id="modalStarBtn" onclick="toggleCollectionCurrent()" aria-pressed="false">&#x2606; Save to collection</button>
+        </div>
+      </div>
+      <div>
+        <label class="modal-size-label" for="modalUrl" style="display:block;">Image URL</label>
         <div class="url-copy-row">
           <input type="text" id="modalUrl" readonly>
-          <button class="btn-copy" id="copyBtn" onclick="copyUrl()">Copy</button>
+          <button type="button" class="btn-copy" id="copyBtn" onclick="copyUrl()">Copy</button>
         </div>
       </div>
       <div class="btn-row">
-        <button class="btn-download" id="modalDownload" onclick="downloadImage()">&#x2193; Download Image</button>
-        <button class="btn-download" id="stashlyBtn" onclick="sendToStashly()" style="background:rgba(230,57,70,0.3);border-color:rgba(230,57,70,0.5);color:#e63946;">&#x2197; Send to Stashly</button>
-        <a class="btn-open" id="modalOpen" href="#" target="_blank">Open source page</a>
+        <button type="button" class="btn-download" id="modalDownload" onclick="downloadImage()">&#x2193; Download Image</button>
+        <button type="button" class="btn-download" id="stashlyBtn" onclick="sendToStashly()" style="background:rgba(230,57,70,0.3);border-color:rgba(230,57,70,0.5);color:#e63946;">&#x2197; Send to Stashly</button>
+        <a class="btn-open" id="modalOpen" href="#" target="_blank" rel="noopener">Open source page</a>
       </div>
     </div>
   </div>
 </div>
 
+<!-- Collection -->
+<div class="modal-overlay" id="collectionOverlay" onclick="if (event.target === this) closeCollection()" inert>
+  <div class="collection-panel" role="dialog" aria-modal="true" aria-labelledby="collectionTitle">
+    <div class="collection-head">
+      <h2 class="collection-title" id="collectionTitle">Your collection</h2>
+      <div class="collection-actions">
+        <button type="button" class="btn-copy" id="zipBtn" onclick="downloadCollectionZip()">Download all (.zip)</button>
+        <button type="button" class="btn-copy" id="copyCreditsBtn" onclick="copyAllCredits()">Copy all credits</button>
+        <button type="button" class="btn-copy btn-danger" id="clearCollectionBtn" onclick="clearCollection()">Clear</button>
+        <button type="button" class="btn-close" id="collectionClose" onclick="closeCollection()" aria-label="Close collection">&#x2715;</button>
+      </div>
+    </div>
+    <div class="collection-body">
+      <ul class="collection-grid" id="collectionGrid"></ul>
+    </div>
+  </div>
+</div>
+
 <script>
-// ---- State ----
+// ---- Configuration ----
 const ALL_SOURCES = ['pexels','unsplash','pixabay','openverse','wikimedia','nasa','iconify'];
 const SOURCE_LABELS = { pexels:'Pexels', unsplash:'Unsplash', pixabay:'Pixabay', openverse:'Openverse', wikimedia:'Wikimedia', nasa:'NASA', iconify:'Iconify' };
+const SOURCE_KEYS = Object.fromEntries(Object.entries(SOURCE_LABELS).map(([k, v]) => [v, k]));
+const PER_SOURCE = 8;
+const MIN_DIM = 500;          // drop images smaller than 500×500 when the source reports dimensions
+const COPY_MAX_PX = 2000;     // cap on clipboard image size
+const COLLECTION_KEY = 'luminary-collection';
+
+// ---- API access ----
+// Pexels, Unsplash and Pixabay need API keys. To keep them off this page, deploy proxy/worker.js
+// and put its URL in PROXY_URL. Once searches work through the proxy, delete DIRECT_KEYS entirely
+// and regenerate the three keys, since the current ones have been published in this file.
+const PROXY_URL = '';
+const DIRECT_KEYS = {
+  pexels:   '1DQboNmA7nYSIxexbVctwCz6CrXEMEudhlCW5GxCw8C5tJfA1wf3DkKX',
+  unsplash: 'dtzOYQ0iqydb5FdzbmJl72p2bW5l80QgyAHQkzNU8BY',
+  pixabay:  '18017390-57da3d02482166a97cd417d7d',
+};
+
+function keyedFetch(service, params) {
+  const qs = new URLSearchParams(params).toString();
+  if (PROXY_URL) return fetch(`${PROXY_URL.replace(/\/+$/, '')}/${service}?${qs}`);
+  const key = typeof DIRECT_KEYS === 'undefined' ? '' : DIRECT_KEYS[service];
+  if (!key) return Promise.reject(new Error(`${SOURCE_LABELS[service]}: no proxy or API key configured`));
+  const k = encodeURIComponent(key);
+  if (service === 'pexels')   return fetch(`https://api.pexels.com/v1/search?${qs}`, { headers: { Authorization: key } });
+  if (service === 'unsplash') return fetch(`https://api.unsplash.com/search/photos?${qs}&client_id=${k}`);
+  if (service === 'pixabay')  return fetch(`https://pixabay.com/api/?${qs}&key=${k}`);
+  return Promise.reject(new Error('Unknown service ' + service));
+}
+
+// ---- State ----
 let activeSources = Object.fromEntries(ALL_SOURCES.map(s => [s, true]));
+let viewMode = 'grid';
+let licenseFilter = 'all';      // 'all' | 'free' | 'attribution'
+let sizeFilter = 'all';         // 'all' | 'large' | 'xl'
+let orientationFilter = 'all';  // 'all' | 'landscape' | 'portrait' | 'square'
+let typeFilter = 'all';         // 'all' | 'photo' | 'illustration' | 'icon'
+
+let currentQuery = '';
+let pageState = {};
+let exhausted = {};
+let sourceCounts = {};
+let allItems = [];
+let displayedItems = [];
+let seenIds = new Set();
+let loading = false;
+let loadToken = 0;              // bumped on every new search so late responses from an old search are ignored
+let autoLoadPaused = false;
 
 let currentModal = null;
-let allItems = [];        // all loaded images for modal navigation
-let viewMode = 'grid';
-let licenseFilter = 'all'; // 'all', 'free' (no attribution), or 'attribution' (attribution required)
-let sizeFilter = 'all';    // 'all', 'large' (>=1000), or 'xl' (>=5000)
-let orientationFilter = 'all'; // 'all', 'landscape', 'portrait', or 'square'
-let typeFilter = 'all';    // 'all', 'photo', 'illustration', or 'icon'
+let modalList = [];
+let modalReturnFocus = null;
+let collectionReturnFocus = null;
+let collection = loadCollection();
 
-// Pagination state
-let currentQuery = '';
-let pageState = {};       // per-source current page
-let exhausted = {};       // per-source: true when no more pages
-let totalLoaded = 0;
-let sourceCounts = {};    // per-source loaded count
-let isSearching = false;  // prevents duplicate searches
-const PER_SOURCE = 8;     // ~8 × 10 sources = ~80 per load
-const MIN_DIM = 500;      // exclude images smaller than 500×500 (when dimensions known)
-
-// ---- API Keys (hardcoded) ----
-// SECURITY NOTE: These keys are visible to anyone who views page source.
-// For a production deployment, route requests through a server-side proxy
-// that holds the keys and enforces rate limits / auth.
-const KEY_PEXELS      = '1DQboNmA7nYSIxexbVctwCz6CrXEMEudhlCW5GxCw8C5tJfA1wf3DkKX';
-const KEY_UNSPLASH    = 'dtzOYQ0iqydb5FdzbmJl72p2bW5l80QgyAHQkzNU8BY';
-const KEY_PIXABAY     = '18017390-57da3d02482166a97cd417d7d';
+const $ = id => document.getElementById(id);
 
 // ---- Source toggles ----
 function toggleChip(src) {
   activeSources[src] = !activeSources[src];
-  document.getElementById('chip-' + src).classList.toggle('active', activeSources[src]);
-  if (allItems.length > 0) reRender();
+  const chip = $('chip-' + src);
+  chip.classList.toggle('active', activeSources[src]);
+  chip.setAttribute('aria-pressed', String(activeSources[src]));
+  filtersChanged();
 }
 
 // ---- View mode ----
 function setViewMode(mode) {
   viewMode = mode;
-  document.getElementById('btn-grid').classList.toggle('active', mode === 'grid');
-  document.getElementById('btn-compact').classList.toggle('active', mode === 'compact');
-  document.getElementById('btn-list').classList.toggle('active', mode === 'list');
-  const grid = document.getElementById('resultsGrid');
-  grid.classList.remove('list-view', 'compact-view');
-  if (mode === 'list') grid.classList.add('list-view');
-  else if (mode === 'compact') grid.classList.add('compact-view');
+  ['grid', 'compact', 'list'].forEach(m => {
+    const btn = $('btn-' + m);
+    btn.classList.toggle('active', m === mode);
+    btn.setAttribute('aria-pressed', String(m === mode));
+  });
+  applyViewClass();
+}
+
+function applyViewClass() {
+  const grid = $('resultsGrid');
+  grid.classList.toggle('list-view', viewMode === 'list');
+  grid.classList.toggle('compact-view', viewMode === 'compact');
 }
 
 // ---- Filters ----
-function applyFilter(items) {
-  let filtered = items;
-  if (licenseFilter === 'free') filtered = filtered.filter(img => img.isCC0);
-  else if (licenseFilter === 'attribution') filtered = filtered.filter(img => !img.isCC0);
-  if (sizeFilter === 'large') filtered = filtered.filter(img => img.width >= 1000 && img.height >= 1000);
-  else if (sizeFilter === 'xl') filtered = filtered.filter(img => img.width >= 5000 && img.height >= 5000);
-  if (orientationFilter === 'landscape') filtered = filtered.filter(img => img.width && img.height && img.width > img.height * 1.05);
-  else if (orientationFilter === 'portrait') filtered = filtered.filter(img => img.width && img.height && img.height > img.width * 1.05);
-  else if (orientationFilter === 'square') filtered = filtered.filter(img => img.width && img.height && Math.abs(img.width - img.height) / Math.max(img.width, img.height) <= 0.05);
-  if (typeFilter !== 'all') filtered = filtered.filter(img => img.mediaType === typeFilter);
-  // Filter by active source chips
-  const activeSourceNames = Object.keys(activeSources).filter(s => activeSources[s]).map(s => SOURCE_LABELS[s]);
-  filtered = filtered.filter(img => activeSourceNames.includes(img.source));
-  return filtered;
+function orientationOf(img) {
+  const r = img.width / img.height;
+  return r > 1.05 ? 'landscape' : r < 1 / 1.05 ? 'portrait' : 'square';
 }
 
-function buildBreakdown() {
-  return Object.keys(sourceCounts)
-    .filter(src => sourceCounts[src] > 0)
-    .map(src => (SOURCE_LABELS[src] || src) + ' ' + sourceCounts[src])
-    .join(' · ');
+// One test per active filter, keyed so explainEmpty() can ask "what if this one were off?"
+function filterTests() {
+  const t = {};
+  if (ALL_SOURCES.some(s => !activeSources[s])) t.sources = img => activeSources[SOURCE_KEYS[img.source]];
+  if (licenseFilter === 'free') t.license = img => img.isCC0;
+  else if (licenseFilter === 'attribution') t.license = img => !img.isCC0;
+  const min = sizeFilter === 'large' ? 1000 : sizeFilter === 'xl' ? 5000 : 0;
+  if (min) t.size = img => img.width >= min && img.height >= min;
+  if (orientationFilter !== 'all') t.orientation = img => img.width && img.height && orientationOf(img) === orientationFilter;
+  if (typeFilter !== 'all') t.type = img => img.mediaType === typeFilter;
+  return t;
 }
 
-function setSizeFilter(mode) {
-  const lgEl = document.getElementById('lgOnlyToggle');
-  const xlEl = document.getElementById('xlOnlyToggle');
-  if (mode === 'large') {
-    if (lgEl.checked) { sizeFilter = 'large'; xlEl.checked = false; }
-    else { sizeFilter = 'all'; }
-  } else {
-    if (xlEl.checked) { sizeFilter = 'xl'; lgEl.checked = false; }
-    else { sizeFilter = 'all'; }
-  }
-  if (allItems.length > 0) reRender();
+function applyFilter(items, skip) {
+  const tests = Object.entries(filterTests()).filter(([k]) => k !== skip).map(([, f]) => f);
+  return items.filter(img => tests.every(f => f(img)));
+}
+
+// Mutually exclusive toggle groups: checking one unchecks the others; unchecking returns to 'all'
+function exclusiveToggle(ids, mode, modes) {
+  const el = $(ids[modes.indexOf(mode)]);
+  ids.forEach(id => { if (id !== el.id) $(id).checked = false; });
+  return el.checked ? mode : 'all';
 }
 
 function setLicenseFilter(mode) {
-  const freeEl = document.getElementById('freeOnlyToggle');
-  const attrEl = document.getElementById('attrOnlyToggle');
-  if (mode === 'free') {
-    if (freeEl.checked) { licenseFilter = 'free'; attrEl.checked = false; }
-    else { licenseFilter = 'all'; }
-  } else {
-    if (attrEl.checked) { licenseFilter = 'attribution'; freeEl.checked = false; }
-    else { licenseFilter = 'all'; }
-  }
-  if (allItems.length > 0) reRender();
+  licenseFilter = exclusiveToggle(['freeOnlyToggle', 'attrOnlyToggle'], mode, ['free', 'attribution']);
+  filtersChanged();
 }
-
+function setSizeFilter(mode) {
+  sizeFilter = exclusiveToggle(['lgOnlyToggle', 'xlOnlyToggle'], mode, ['large', 'xl']);
+  filtersChanged();
+}
 function setOrientationFilter(mode) {
-  const lEl = document.getElementById('landscapeToggle');
-  const pEl = document.getElementById('portraitToggle');
-  const sEl = document.getElementById('squareToggle');
-  const el = mode === 'landscape' ? lEl : mode === 'portrait' ? pEl : sEl;
-  if (el.checked) {
-    orientationFilter = mode;
-    [lEl, pEl, sEl].forEach(e => { if (e !== el) e.checked = false; });
-  } else {
-    orientationFilter = 'all';
-  }
-  if (allItems.length > 0) reRender();
+  orientationFilter = exclusiveToggle(['landscapeToggle', 'portraitToggle', 'squareToggle'], mode, ['landscape', 'portrait', 'square']);
+  filtersChanged();
 }
-
 function setTypeFilter(mode) {
-  const phEl = document.getElementById('photoToggle');
-  const ilEl = document.getElementById('illustrationToggle');
-  const icEl = document.getElementById('iconToggle');
-  const el = mode === 'photo' ? phEl : mode === 'illustration' ? ilEl : icEl;
-  if (el.checked) {
-    typeFilter = mode;
-    [phEl, ilEl, icEl].forEach(e => { if (e !== el) e.checked = false; });
-  } else {
-    typeFilter = 'all';
-  }
-  if (allItems.length > 0) reRender();
+  typeFilter = exclusiveToggle(['photoToggle', 'illustrationToggle', 'iconToggle'], mode, ['photo', 'illustration', 'icon']);
+  filtersChanged();
 }
 
-function reRender() {
-  const filtered = applyFilter(allItems);
-  const grid = document.getElementById('resultsGrid');
-  grid.innerHTML = '';
-  grid.classList.remove('list-view', 'compact-view');
-  if (viewMode === 'list') grid.classList.add('list-view');
-  else if (viewMode === 'compact') grid.classList.add('compact-view');
-  filtered.forEach(img => grid.appendChild(buildCard(img)));
-  const header = document.getElementById('resultsHeader');
-  const stateBox = document.getElementById('stateBox');
-  if (filtered.length === 0 && allItems.length > 0) {
-    const msg = licenseFilter === 'free'
-      ? 'All results require attribution. Disable the "No attribution" filter or try different keywords.'
-      : 'No results require attribution. Disable the "Attribution only" filter or try different keywords.';
-    stateBox.innerHTML = '<div class="big">&#x1F512;</div><p>' + msg + '</p>';
-    stateBox.style.display = 'block';
-    header.style.display = 'none';
-  } else if (filtered.length === 0) {
-    stateBox.style.display = 'block';
-    header.style.display = 'none';
-  } else {
-    stateBox.style.display = 'none';
-    header.style.display = 'flex';
-  }
-  const breakdown = buildBreakdown();
-  let countLabel;
-  if (licenseFilter === 'free') countLabel = '<strong>' + filtered.length + '</strong> of ' + allItems.length + ' images (attribution-free only)';
-  else if (licenseFilter === 'attribution') countLabel = '<strong>' + filtered.length + '</strong> of ' + allItems.length + ' images (attribution required only)';
-  else countLabel = '<strong>' + filtered.length + '</strong> images';
-  document.getElementById('resultsCount').innerHTML = countLabel + (breakdown ? ' &nbsp;—&nbsp; ' + breakdown : '');
+function clearFilter(key) {
+  if (key === 'sources') ALL_SOURCES.forEach(s => { if (!activeSources[s]) toggleChip(s); });
+  const groups = {
+    license: ['freeOnlyToggle', 'attrOnlyToggle'],
+    size: ['lgOnlyToggle', 'xlOnlyToggle'],
+    orientation: ['landscapeToggle', 'portraitToggle', 'squareToggle'],
+    type: ['photoToggle', 'illustrationToggle', 'iconToggle'],
+  };
+  if (!groups[key]) return;
+  groups[key].forEach(id => { $(id).checked = false; });
+  if (key === 'license') licenseFilter = 'all';
+  if (key === 'size') sizeFilter = 'all';
+  if (key === 'orientation') orientationFilter = 'all';
+  if (key === 'type') typeFilter = 'all';
+  filtersChanged();
 }
 
-// ---- Search (fresh) ----
+function filterName(key) {
+  const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+  switch (key) {
+    case 'license': return licenseFilter === 'free' ? 'No attribution' : 'Attribution only';
+    case 'size': return sizeFilter === 'large' ? 'Large (1000+)' : 'Extra large (5000+)';
+    case 'orientation': return cap(orientationFilter);
+    case 'type': return cap(typeFilter);
+  }
+  return '';
+}
+
+function filtersChanged() {
+  autoLoadPaused = false;
+  if (!allItems.length) return;
+  reRender();
+  requestAnimationFrame(maybeAutoLoad);
+}
+
+// ---- Search ----
 async function doSearch() {
-  const q = document.getElementById('searchQuery').value.trim();
-  if (!q || isSearching) return;
-  if (!Object.values(activeSources).some(v => v)) { showError('Select at least one source.'); return; }
+  const q = $('searchQuery').value.trim();
+  if (!q) return;
+  if (!ALL_SOURCES.some(s => activeSources[s])) { showError('Select at least one source.'); return; }
   clearError();
 
-  // Reset pagination
-  isSearching = true;
+  const token = ++loadToken;
+  loading = true;
+  autoLoadPaused = false;
   currentQuery = q;
   pageState = Object.fromEntries(ALL_SOURCES.map(s => [s, 1]));
   exhausted = Object.fromEntries(ALL_SOURCES.map(s => [s, false]));
   sourceCounts = Object.fromEntries(ALL_SOURCES.map(s => [s, 0]));
-  totalLoaded = 0;
+  allItems = [];
+  displayedItems = [];
+  seenIds = new Set();
+  $('resultsGrid').innerHTML = '';
+  renderStatus();
 
-  showLoading();
-  document.getElementById('resultsGrid').innerHTML = '';
-
-  const { all, errors } = await fetchPage(q);
-  renderBatch(all, true);
-  if (errors.length) showError(errors.map(e => e.message || String(e)).join(' · '));
-  updateUI(all.length, q);
-  isSearching = false;
+  const result = await fetchPage(q);
+  if (token !== loadToken) return;
+  applyPage(result);
+  loading = false;
+  reRender();
+  announce(`${displayedItems.length} images found for ${q}.`);
+  requestAnimationFrame(maybeAutoLoad);
 }
 
-// ---- Load more ----
 async function loadMore() {
-  if (isSearching) return;
-  isSearching = true;
-  const btn = document.getElementById('loadMoreBtn');
-  if (btn) { btn.textContent = 'Loading…'; btn.disabled = true; }
+  if (loading || !currentQuery || !hasMore()) return;
+  const token = loadToken;
+  loading = true;
   clearError();
-  const { all, errors } = await fetchPage(currentQuery);
-  renderBatch(all, false);
-  if (errors.length) showError(errors.map(e => e.message || String(e)).join(' · '));
-  updateUI(all.length, currentQuery);
-  isSearching = false;
+  updateScrollStatus();
+  const result = await fetchPage(currentQuery);
+  if (token !== loadToken) return;
+  const added = applyPage(result);
+  loading = false;
+  const visible = applyFilter(added);
+  appendCards(visible);
+  // Stop auto-loading if a whole batch produced nothing visible, so filters can't trigger endless fetching
+  if (!visible.length && added.length) autoLoadPaused = true;
+  renderStatus();
+  if (visible.length) announce(`${visible.length} more images loaded.`);
+  requestAnimationFrame(maybeAutoLoad);
 }
 
-// ---- Fisher-Yates shuffle ----
+function resumeAutoLoad() {
+  autoLoadPaused = false;
+  loadMore();
+}
+
 function shuffle(arr) {
   for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -731,44 +834,47 @@ function shuffle(arr) {
   return arr;
 }
 
-// ---- Source-to-fetcher map ----
 const FETCHERS = {
   pexels: fetchPexels, unsplash: fetchUnsplash, pixabay: fetchPixabay,
   openverse: fetchOpenverse, wikimedia: fetchWikimedia, nasa: fetchNasa,
   iconify: fetchIconify,
 };
 
-// ---- Fetch one page across active sources ----
+// Fetchers don't touch shared state; applyPage() does, and only for the current search
 async function fetchPage(q) {
-  const promises = [];
-  ALL_SOURCES.forEach(src => {
-    if (activeSources[src] && !exhausted[src]) promises.push(FETCHERS[src](q, pageState[src]));
-  });
-
-  const results = await Promise.allSettled(promises);
-  const all = [], errors = [];
-  results.forEach(r => {
-    if (r.status === 'fulfilled') {
-      // Filter out images below minimum dimensions (when known)
-      const sizedItems = r.value.items.filter(img =>
-        !img.width || !img.height || (img.width >= MIN_DIM && img.height >= MIN_DIM)
-      );
-      all.push(...sizedItems);
-      const src = r.value.source;
-      pageState[src]++;
-      sourceCounts[src] = (sourceCounts[src] || 0) + sizedItems.length;
-      if (r.value.items.length < PER_SOURCE) exhausted[src] = true;
-    } else {
-      errors.push(r.reason);
-    }
-  });
-  shuffle(all);
-  return { all, errors };
+  const sources = ALL_SOURCES.filter(s => activeSources[s] && !exhausted[s]);
+  const results = await Promise.allSettled(sources.map(s => FETCHERS[s](q, pageState[s])));
+  return { sources, results };
 }
 
-// ---- Per-source fetchers (return { source, items[] }) ----
+function applyPage({ sources, results }) {
+  const added = [], errors = [];
+  results.forEach((r, i) => {
+    const src = sources[i];
+    if (r.status !== 'fulfilled') { errors.push(r.reason); return; }
+    const fresh = r.value.items.filter(img => !seenIds.has(img.id));
+    fresh.forEach(img => seenIds.add(img.id));
+    const items = fresh.filter(img => !img.width || !img.height || (img.width >= MIN_DIM && img.height >= MIN_DIM));
+    added.push(...items);
+    pageState[src]++;
+    sourceCounts[src] += items.length;
+    // A page of nothing but repeats means the source has run out, even if it claims otherwise
+    if (r.value.done || !fresh.length) exhausted[src] = true;
+  });
+  shuffle(added);
+  allItems.push(...added);
+  added.forEach(measureImage);
+  if (errors.length) showError(errors.map(e => e.message || String(e)).join(' · '));
+  return added;
+}
+
+function hasMore() {
+  return ALL_SOURCES.some(s => activeSources[s] && !exhausted[s]);
+}
+
+// ---- Per-source fetchers: each returns { items, done } ----
 async function fetchPexels(q, page) {
-  const res = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(q)}&per_page=${PER_SOURCE}&page=${page}`, { headers: { Authorization: KEY_PEXELS } });
+  const res = await keyedFetch('pexels', { query: q, per_page: PER_SOURCE, page });
   if (!res.ok) throw new Error('Pexels: ' + res.status);
   const data = await res.json();
   const items = (data.photos || []).map(p => ({
@@ -779,11 +885,11 @@ async function fetchPexels(q, page) {
     width: p.width, height: p.height, pageUrl: p.url,
     license: 'Pexels License', licenseNote: 'Free to use for any purpose. No attribution required.', isCC0: true, mediaType: 'photo',
   }));
-  return { source: 'pexels', items };
+  return { items, done: !data.next_page };
 }
 
 async function fetchUnsplash(q, page) {
-  const res = await fetch(`https://api.unsplash.com/search/photos?query=${encodeURIComponent(q)}&per_page=${PER_SOURCE}&page=${page}&content_filter=high&client_id=${KEY_UNSPLASH}`);
+  const res = await keyedFetch('unsplash', { query: q, per_page: PER_SOURCE, page, content_filter: 'high' });
   if (!res.ok) throw new Error('Unsplash: ' + res.status);
   const data = await res.json();
   const items = (data.results || []).map(p => ({
@@ -794,11 +900,11 @@ async function fetchUnsplash(q, page) {
     width: p.width, height: p.height, pageUrl: p.links.html,
     license: 'Unsplash License', licenseNote: 'Free to use for any purpose. No attribution required (appreciated).', isCC0: true, mediaType: 'photo',
   }));
-  return { source: 'unsplash', items };
+  return { items, done: page >= (data.total_pages || 0) };
 }
 
 async function fetchPixabay(q, page) {
-  const res = await fetch(`https://pixabay.com/api/?key=${KEY_PIXABAY}&q=${encodeURIComponent(q)}&per_page=${PER_SOURCE}&page=${page}&safesearch=true`);
+  const res = await keyedFetch('pixabay', { q, per_page: PER_SOURCE, page, safesearch: 'true' });
   if (!res.ok) throw new Error('Pixabay: ' + res.status);
   const data = await res.json();
   const items = (data.hits || []).map(p => ({
@@ -810,7 +916,7 @@ async function fetchPixabay(q, page) {
     license: 'Pixabay License', licenseNote: 'Free for commercial and educational use. No attribution required.', isCC0: true,
     mediaType: (p.type === 'illustration' || p.type === 'vector') ? 'illustration' : 'photo',
   }));
-  return { source: 'pixabay', items };
+  return { items, done: page * PER_SOURCE >= (data.totalHits || 0) };
 }
 
 async function fetchOpenverse(q, page) {
@@ -829,11 +935,11 @@ async function fetchOpenverse(q, page) {
       width: p.width || null, height: p.height || null,
       pageUrl: p.foreign_landing_url || p.url,
       license: licLabel, licenseNote: isCC0 ? 'CC0 — No rights reserved. Free to use without any attribution.' : 'CC BY — Free to use with attribution to the creator.',
-      isCC0, ovLicLabel: isCC0 ? 'CC0' : 'CC BY',
+      isCC0,
       mediaType: (p.category === 'illustration' || p.category === 'digitized_artwork') ? 'illustration' : 'photo',
     };
   });
-  return { source: 'openverse', items };
+  return { items, done: page >= (data.page_count || 0) };
 }
 
 async function fetchWikimedia(q, page) {
@@ -842,21 +948,16 @@ async function fetchWikimedia(q, page) {
   if (!res.ok) throw new Error('Wikimedia: ' + res.status);
   const data = await res.json();
   const pages = data.query?.pages || {};
-  const items = Object.values(pages).filter(p => {
-    const mime = p.imageinfo?.[0]?.mime || '';
-    return mime.startsWith('image/');
-  }).map(p => {
+  const items = Object.values(pages).filter(p => (p.imageinfo?.[0]?.mime || '').startsWith('image/')).map(p => {
     const info = p.imageinfo[0];
     const meta = info.extmetadata || {};
     const licShort = (meta.LicenseShortName?.value || '').toLowerCase();
     const isCC0 = licShort.includes('cc0') || licShort.includes('public domain') || licShort === 'pd';
     const licLabel = meta.LicenseShortName?.value || 'Wikimedia License';
-    // Strip HTML tags from artist field
-    const artist = (meta.Artist?.value || 'Unknown').replace(/<[^>]*>/g, '');
     return {
       id: 'wm_' + p.pageid, source: 'Wikimedia',
-      title: (meta.ImageDescription?.value || p.title.replace('File:', '')).replace(/<[^>]*>/g, ''),
-      photographer: artist,
+      title: stripTags(meta.ImageDescription?.value || p.title.replace('File:', '')),
+      photographer: stripTags(meta.Artist?.value || 'Unknown'),
       thumb: info.thumburl || info.url,
       srcSet: { small: info.thumburl || info.url, medium: info.thumburl || info.url, large: info.url, original: info.url },
       width: info.width || null, height: info.height || null,
@@ -865,33 +966,29 @@ async function fetchWikimedia(q, page) {
       isCC0, mediaType: (info.mime === 'image/svg+xml' || info.mime === 'image/png') ? 'illustration' : 'photo',
     };
   });
-  if (!data.continue) exhausted.wikimedia = true;
-  return { source: 'wikimedia', items };
+  return { items, done: !data.continue };
 }
 
 async function fetchNasa(q, page) {
   const res = await fetch(`https://images-api.nasa.gov/search?q=${encodeURIComponent(q)}&media_type=image&page=${page}&page_size=${PER_SOURCE}`);
   if (!res.ok) throw new Error('NASA: ' + res.status);
   const data = await res.json();
-  const collection = data.collection || {};
-  const items = (collection.items || []).filter(item => item.links?.length > 0).map(item => {
+  const collectionData = data.collection || {};
+  const items = (collectionData.items || []).filter(item => item.links?.length > 0).map(item => {
     const d = item.data[0];
     const thumb = item.links[0].href;
-    const nasaId = d.nasa_id;
     return {
-      id: 'nasa_' + nasaId, source: 'NASA',
+      id: 'nasa_' + d.nasa_id, source: 'NASA',
       title: d.title || 'NASA image', photographer: d.photographer || d.center || 'NASA',
-      thumb: thumb,
+      thumb,
       srcSet: { small: thumb, medium: thumb, large: thumb, original: thumb },
       width: null, height: null,
-      pageUrl: `https://images.nasa.gov/details/${nasaId}`,
+      pageUrl: `https://images.nasa.gov/details/${encodeURIComponent(d.nasa_id)}`,
       license: 'Public Domain', licenseNote: 'NASA public domain — Free to use. Courtesy credit to NASA appreciated.',
       isCC0: true, mediaType: 'photo',
     };
   });
-  const hasNext = (collection.links || []).some(l => l.rel === 'next');
-  if (!hasNext) exhausted.nasa = true;
-  return { source: 'nasa', items };
+  return { items, done: !(collectionData.links || []).some(l => l.rel === 'next') };
 }
 
 async function fetchIconify(q, page) {
@@ -899,16 +996,16 @@ async function fetchIconify(q, page) {
   const res = await fetch(`https://api.iconify.design/search?query=${encodeURIComponent(q)}&limit=${PER_SOURCE}&start=${offset}`);
   if (!res.ok) throw new Error('Iconify: ' + res.status);
   const data = await res.json();
-  const icons = data.icons || [];
+  // Iconify enforces a minimum page size larger than ours, so trim to keep offsets from overlapping
+  const icons = (data.icons || []).slice(0, PER_SOURCE);
   const items = icons.map(icon => {
-    // icon format is "prefix:name"
     const [prefix, name] = icon.split(':');
     // Iconify SVGs default to 1em sizing, which renders unreliably in <img>; request explicit pixel sizes
     const svgUrl = `https://api.iconify.design/${prefix}/${name}.svg?height=1024`;
     const previewUrl = `https://api.iconify.design/${prefix}/${name}.svg?height=256`;
     return {
       id: 'ic_' + icon, source: 'Iconify',
-      title: name.replace(/-/g, ' ').replace(/_/g, ' '), photographer: prefix,
+      title: name.replace(/[-_]/g, ' '), photographer: prefix,
       thumb: previewUrl,
       srcSet: { small: previewUrl, medium: previewUrl, large: svgUrl, original: svgUrl },
       width: null, height: null,
@@ -917,220 +1014,368 @@ async function fetchIconify(q, page) {
       isCC0: true, mediaType: 'icon',
     };
   });
-  if (offset + PER_SOURCE >= (data.total || 0)) exhausted.iconify = true;
-  return { source: 'iconify', items };
+  return { items, done: offset + PER_SOURCE >= (data.total || 0) };
 }
 
-// ---- Build a single image card element ----
+// ---- Measuring images whose source doesn't report dimensions ----
+let measureRenderTimer = null;
+
+function measureImage(img) {
+  if ((img.width && img.height) || img.measuring) return;
+  const src = safeUrl(img.srcSet.original || img.thumb);
+  if (!src) return;
+  img.measuring = true;
+  const probe = new Image();
+  probe.onload = () => {
+    img.width = probe.naturalWidth || null;
+    img.height = probe.naturalHeight || null;
+    img.measuring = false;
+    onMeasured(img);
+  };
+  probe.onerror = () => { img.measuring = false; onMeasured(img); };
+  probe.src = src;
+}
+
+function onMeasured(img) {
+  if (img._card?.isConnected) {
+    img._card.querySelectorAll('.dims-short').forEach(el => { el.textContent = shortDims(img); });
+    img._card.querySelectorAll('.dims-long').forEach(el => { el.textContent = longDims(img); });
+    img._card.querySelector('.card-hit').setAttribute('aria-label', cardLabel(img));
+  }
+  if (currentModal === img) renderModalAttrs(img);
+  // Size and orientation results depend on dimensions, so refresh once a burst of measurements settles
+  if (sizeFilter !== 'all' || orientationFilter !== 'all') {
+    clearTimeout(measureRenderTimer);
+    measureRenderTimer = setTimeout(() => { reRender(); requestAnimationFrame(maybeAutoLoad); }, 300);
+  }
+}
+
+function shortDims(img) { return img.width && img.height ? `${img.width}×${img.height}` : ''; }
+function longDims(img) {
+  if (img.width && img.height) return `${img.width} × ${img.height} px`;
+  return img.measuring ? 'Measuring…' : 'Unknown';
+}
+
+// ---- Rendering ----
+function cardLabel(img) {
+  const license = img.isCC0 ? 'free to use' : 'attribution required';
+  const dims = img.width && img.height ? `, ${img.width} by ${img.height} pixels` : '';
+  return `${truncate(img.title, 120)} — ${img.source}, ${license}${dims}`;
+}
+
 function buildCard(img) {
   const card = document.createElement('div');
   card.className = 'img-card' + (img.mediaType === 'icon' ? ' icon-card' : '');
-  card.onclick = () => openModal(img);
+  card.setAttribute('role', 'listitem');
+  card._item = img;
+  img._card = card;
 
-  const dims = (img.width && img.height) ? img.width + ' × ' + img.height + ' px' : 'Unknown';
-  const photographer = img.photographer ? escHtml(img.photographer) : 'Unknown';
-  const dlUrl = img.srcSet.original || '';
-  let badgeClass, badgeLabel;
-  if (img.isCC0) {
-    badgeClass = 'license-free';
-    badgeLabel = 'Free';
-  } else {
-    badgeClass = 'license-ccby';
-    badgeLabel = 'Attr';
-  }
+  const saved = inCollection(img.id);
+  const badgeClass = img.isCC0 ? 'license-free' : 'license-ccby';
+  const badgeLabel = img.isCC0 ? 'Free' : 'Attr';
 
   card.innerHTML =
-    `<img class="img-thumb" src="${escHtml(img.thumb)}" alt="${escHtml(img.title)}" loading="lazy">` +
-    `<div class="license-badge ${badgeClass}">${badgeLabel}</div>` +
-    `<div class="img-grid-footer">
-      <span class="img-source-badge">${img.source}</span>
-      <span class="img-dims">${img.width && img.height ? img.width + '×' + img.height : ''}</span>
+    `<button type="button" class="card-hit" aria-label="${escHtml(cardLabel(img))}"></button>` +
+    `<img class="img-thumb" src="${escHtml(safeUrl(img.thumb))}" alt="" loading="lazy">` +
+    `<button type="button" class="star-btn" aria-pressed="${saved}" aria-label="Save to collection">${saved ? '&#x2605;' : '&#x2606;'}</button>` +
+    `<div class="license-badge ${badgeClass}" aria-hidden="true">${badgeLabel}</div>` +
+    `<div class="img-grid-footer" aria-hidden="true">
+      <span class="img-source-badge">${escHtml(img.source)}</span>
+      <span class="img-dims dims-short">${shortDims(img)}</span>
     </div>` +
     `<div class="img-list-detail">
       <div class="list-top">
         <div class="list-title">${escHtml(img.title)}</div>
-        <span class="list-source-badge">${img.source}</span>
+        <span class="list-source-badge">${escHtml(img.source)}</span>
       </div>
       <div class="list-attrs">
-        <div class="list-attr"><span class="list-attr-label">By</span><span class="list-attr-val">${photographer}</span></div>
-        <div class="list-attr"><span class="list-attr-label">Dimensions</span><span class="list-attr-val">${dims}</span></div>
+        <div class="list-attr"><span class="list-attr-label">By</span><span class="list-attr-val">${escHtml(img.photographer || 'Unknown')}</span></div>
+        <div class="list-attr"><span class="list-attr-label">Dimensions</span><span class="list-attr-val dims-long">${longDims(img)}</span></div>
         <div class="list-attr"><span class="list-attr-label">License</span><span class="list-attr-val">${escHtml(img.license)}</span></div>
       </div>
       <div class="list-bottom">
         <span class="list-license-pill">${escHtml(img.licenseNote)}</span>
         <span class="list-cc-badge ${badgeClass}">${badgeLabel}</span>
-        <button class="list-action" onclick="event.stopPropagation(); downloadUrl('${escHtml(dlUrl)}', '${escHtml(img.title.replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '-'))}')">&#x2193; Download</button>
-        <a class="list-action" href="${escHtml(safeUrl(img.pageUrl))}" target="_blank" onclick="event.stopPropagation()">Source &#x2197;</a>
+        <button type="button" class="list-action dl-btn">&#x2193; Download</button>
+        <button type="button" class="list-action credit-btn">Copy credit</button>
+        <a class="list-action" href="${escHtml(safeUrl(img.pageUrl))}" target="_blank" rel="noopener">Source &#x2197;</a>
       </div>
     </div>`;
+
+  const hit = card.querySelector('.card-hit');
+  hit.addEventListener('click', () => openModal(img, displayedItems, hit));
+  card.querySelector('.star-btn').addEventListener('click', () => toggleCollection(img));
+  const dl = card.querySelector('.dl-btn');
+  dl.addEventListener('click', () => downloadItem(img, dl));
+  const credit = card.querySelector('.credit-btn');
+  credit.addEventListener('click', () => copyText(creditText(img), credit, 'Credit copied!'));
   return card;
 }
 
-// ---- Render a batch of cards (append mode) ----
-function renderBatch(items, fresh) {
-  const grid = document.getElementById('resultsGrid');
-  if (fresh) { grid.innerHTML = ''; allItems = []; }
-  grid.classList.remove('list-view', 'compact-view');
-  if (viewMode === 'list') grid.classList.add('list-view');
-  else if (viewMode === 'compact') grid.classList.add('compact-view');
-  allItems.push(...items);
-
-  const visible = applyFilter(items);
-  visible.forEach(img => grid.appendChild(buildCard(img)));
-
-  totalLoaded += items.length;
+function appendCards(items) {
+  applyViewClass();
+  const frag = document.createDocumentFragment();
+  items.forEach(img => frag.appendChild(buildCard(img)));
+  $('resultsGrid').appendChild(frag);
+  displayedItems.push(...items);
 }
 
-// ---- Update header count + load-more button ----
-function updateUI(batchSize, q) {
-  const header = document.getElementById('resultsHeader');
-  const stateBox = document.getElementById('stateBox');
+function reRender() {
+  // Keep keyboard focus on the same card (or its star) across a rebuild
+  const active = document.activeElement;
+  const focusedItem = active?.closest?.('.img-card')?._item;
+  const focusedStar = active?.classList?.contains('star-btn');
 
-  const visibleCount = applyFilter(allItems).length;
+  $('resultsGrid').innerHTML = '';
+  displayedItems = [];
+  appendCards(applyFilter(allItems));
+  renderStatus();
 
-  if (totalLoaded === 0) {
-    stateBox.innerHTML = '<div class="big">&#x1F50D;</div><p>No results found for "' + escHtml(q) + '". Try different keywords or enable more sources.</p>';
-    stateBox.style.display = 'block';
+  if (focusedItem?._card?.isConnected) focusedItem._card.querySelector(focusedStar ? '.star-btn' : '.card-hit').focus();
+}
+
+function buildBreakdown() {
+  return ALL_SOURCES
+    .filter(src => sourceCounts[src] > 0)
+    .map(src => `${SOURCE_LABELS[src]} ${sourceCounts[src]}`)
+    .join(' · ');
+}
+
+function renderStatus() {
+  const header = $('resultsHeader');
+  const stateBox = $('stateBox');
+  if (!currentQuery) return;
+
+  if (!allItems.length) {
     header.style.display = 'none';
-  } else if (visibleCount === 0) {
-    const msg = licenseFilter === 'free'
-      ? 'All ' + totalLoaded + ' results require attribution. Disable the "No attribution" filter or try different keywords.'
-      : 'No results require attribution. Disable the "Attribution only" filter or try different keywords.';
-    stateBox.innerHTML = '<div class="big">&#x1F512;</div><p>' + msg + '</p>';
     stateBox.style.display = 'block';
-    header.style.display = 'none';
+    stateBox.innerHTML = loading
+      ? '<div class="spinner" aria-hidden="true"></div><p>Searching across sources…</p>'
+      : `<div class="big" aria-hidden="true">&#x1F50D;</div><p>No results found for "${escHtml(currentQuery)}". Try different keywords or turn on more sources.</p>`;
+    if (!loading) announce(`No results found for ${currentQuery}.`);
+    updateScrollStatus();
+    return;
+  }
+
+  const shown = displayedItems.length;
+  const hidden = allItems.length - shown;
+  const breakdown = buildBreakdown();
+  let html = `<strong>${shown}</strong> image${shown === 1 ? '' : 's'}`;
+  if (hidden) html += ` <span class="hidden-count">(${hidden} hidden by filters)</span>`;
+  if (breakdown) html += ` &nbsp;—&nbsp; ${breakdown}`;
+  $('resultsCount').innerHTML = html;
+  header.style.display = 'flex';
+
+  if (shown === 0) {
+    stateBox.innerHTML = explainEmpty();
+    stateBox.style.display = 'block';
   } else {
     stateBox.style.display = 'none';
-    header.style.display = 'flex';
   }
-
-  // Build per-source breakdown
-  const breakdown = buildBreakdown();
-  let countLabel;
-  if (licenseFilter === 'free') countLabel = '<strong>' + visibleCount + '</strong> of ' + totalLoaded + ' images (attribution-free only)';
-  else if (licenseFilter === 'attribution') countLabel = '<strong>' + visibleCount + '</strong> of ' + totalLoaded + ' images (attribution required only)';
-  else countLabel = '<strong>' + visibleCount + '</strong> images';
-  document.getElementById('resultsCount').innerHTML = countLabel + (breakdown ? ' &nbsp;—&nbsp; ' + breakdown : '');
-
-  // Manage load-more button (reuse if exists)
-  const anyMore = Object.keys(activeSources).some(src => activeSources[src] && !exhausted[src]);
-  let btn = document.getElementById('loadMoreBtn');
-  if (anyMore && totalLoaded > 0) {
-    if (!btn) {
-      btn = document.createElement('button');
-      btn.id = 'loadMoreBtn';
-      btn.className = 'btn-load-more';
-      btn.onclick = loadMore;
-      document.querySelector('.app').appendChild(btn);
-    }
-    btn.textContent = 'Load more images';
-    btn.disabled = false;
-  } else if (btn) {
-    btn.remove();
-  }
+  updateScrollStatus();
 }
 
-function showLoading() {
-  document.getElementById('stateBox').innerHTML = '<div class="spinner"></div><p>Searching across sources…</p>';
-  document.getElementById('stateBox').style.display = 'block';
-  document.getElementById('resultsHeader').style.display = 'none';
-  const existing = document.getElementById('loadMoreBtn');
-  if (existing) existing.remove();
+// Tells the user which filter is hiding everything, with a button to turn it off
+function explainEmpty() {
+  const options = Object.keys(filterTests())
+    .map(key => ({ key, count: applyFilter(allItems, key).length }))
+    .filter(o => o.count > 0)
+    .sort((a, b) => b.count - a.count);
+  const dimsMatter = sizeFilter !== 'all' || orientationFilter !== 'all';
+  const pending = dimsMatter ? allItems.filter(i => i.measuring).length : 0;
+  const plural = n => `${n} image${n === 1 ? '' : 's'}`;
+
+  let html = '<div class="big" aria-hidden="true">&#x1F50E;</div><p>None of the loaded images match all of your filters.</p>';
+  if (options.length) {
+    html += '<ul class="empty-tips">' + options.slice(0, 3).map(o => {
+      const label = o.key === 'sources' ? 'Turn your switched-off sources back on' : `Turn off "${filterName(o.key)}"`;
+      return `<li><button type="button" class="tip-btn" data-clear-filter="${o.key}">${escHtml(label)}</button>to see ${plural(o.count)}</li>`;
+    }).join('') + '</ul>';
+  } else if (!pending) {
+    html += '<p>No single change would show results. Try turning off more than one filter, or search for something else.</p>';
+  }
+  if (pending) html += `<p class="empty-note">Still checking the size of ${plural(pending)}. They'll appear here if they match.</p>`;
+  return html;
 }
 
-// ---- Modal ----
-function openModal(img) {
+// ---- Infinite scroll ----
+function sentinelNear() {
+  return $('scrollStatus').getBoundingClientRect().top < window.innerHeight + 800;
+}
+
+function maybeAutoLoad() {
+  if (currentQuery && allItems.length && !loading && !autoLoadPaused && hasMore() && !overlayOpen() && sentinelNear()) loadMore();
+}
+
+function updateScrollStatus() {
+  const el = $('scrollStatus');
+  if (!currentQuery || !allItems.length || !ALL_SOURCES.some(s => activeSources[s])) { el.innerHTML = ''; return; }
+  if (loading) el.innerHTML = '<div class="spinner" aria-hidden="true"></div>Loading more images…';
+  else if (!hasMore()) el.textContent = "You've reached the end of the results.";
+  else if (autoLoadPaused) el.innerHTML = '<p>The last batch had no images that match your filters.</p><button type="button" class="btn-load-more" onclick="resumeAutoLoad()">Load more images</button>';
+  else el.innerHTML = '';
+}
+
+new IntersectionObserver(entries => {
+  if (entries.some(e => e.isIntersecting)) maybeAutoLoad();
+}, { rootMargin: '0px 0px 800px 0px' }).observe($('scrollStatus'));
+
+// ---- Overlays (image details + collection) ----
+function isOpen(id) { return $(id).classList.contains('open'); }
+function overlayOpen() { return isOpen('modalOverlay') || isOpen('collectionOverlay'); }
+
+// Only the topmost dialog stays interactive; everything behind it is inert for keyboard and screen readers
+function syncOverlays() {
+  const modalOpen = isOpen('modalOverlay');
+  const colOpen = isOpen('collectionOverlay');
+  $('app').inert = modalOpen || colOpen;
+  $('modalOverlay').inert = !modalOpen;
+  $('collectionOverlay').inert = !colOpen || modalOpen;
+  document.body.style.overflow = (modalOpen || colOpen) ? 'hidden' : '';
+}
+
+// ---- Image details modal ----
+function openModal(img, list, returnFocus) {
+  modalList = list || [img];
+  modalReturnFocus = returnFocus || document.activeElement;
+  showModalItem(img);
+  $('modalOverlay').classList.add('open');
+  syncOverlays();
+  $('modalClose').focus();
+}
+
+function showModalItem(img) {
   currentModal = img;
-  document.getElementById('modalSource').textContent = img.source;
-  document.getElementById('modalTitle').textContent = img.title;
-  document.getElementById('modalImg').src = img.thumb;
-  const imgPane = document.querySelector('.modal-img-pane');
-  if (img.mediaType === 'icon') {
-    imgPane.style.background = '#fff';
-    document.getElementById('modalImg').style.objectFit = 'contain';
-    document.getElementById('modalImg').style.padding = '32px';
-  } else {
-    imgPane.style.background = '';
-    document.getElementById('modalImg').style.objectFit = '';
-    document.getElementById('modalImg').style.padding = '';
-  }
-  const licenseEl = document.getElementById('modalLicense');
-  licenseEl.innerHTML = '';
+  $('modalSource').textContent = img.source;
+  $('modalTitle').textContent = img.title;
+  const imgEl = $('modalImg');
+  imgEl.alt = img.title;
+  const isIcon = img.mediaType === 'icon';
+  document.querySelector('.modal-img-pane').style.background = isIcon ? '#fff' : '';
+  imgEl.style.padding = isIcon ? '32px' : '';
+
+  const licenseEl = $('modalLicense');
+  licenseEl.textContent = '';
   const strong = document.createElement('strong');
   strong.textContent = img.license;
-  licenseEl.appendChild(strong);
-  licenseEl.appendChild(document.createTextNode(' — ' + img.licenseNote));
-  document.getElementById('modalOpen').href = safeUrl(img.pageUrl);
-  let attrHtml = '';
-  if (img.photographer) attrHtml += `<div class="attr-row"><span class="attr-label">By</span><span class="attr-val">${escHtml(img.photographer)}</span></div>`;
-  if (img.width && img.height) attrHtml += `<div class="attr-row"><span class="attr-label">Size</span><span class="attr-val">${img.width} × ${img.height} px</span></div>`;
-  document.getElementById('modalAttrs').innerHTML = attrHtml;
-  updateModalUrl();
+  licenseEl.append(strong, ' — ' + img.licenseNote);
+
+  $('modalCredit').textContent = creditText(img);
+  $('modalOpen').href = safeUrl(img.pageUrl) || '#';
+  const url = img.srcSet.original || img.thumb;
+  $('modalUrl').value = url;
+  imgEl.style.opacity = '0.5';
+  imgEl.onload = () => { imgEl.style.opacity = '1'; };
+  imgEl.src = safeUrl(url);
+  renderModalAttrs(img);
+  updateModalStar();
   updateModalNav();
-  document.getElementById('modalOverlay').classList.add('open');
-  document.body.style.overflow = 'hidden';
 }
 
-function updateModalUrl() {
-  if (!currentModal) return;
-  const url = currentModal.srcSet.original;
-  document.getElementById('modalUrl').value = url;
-  const imgEl = document.getElementById('modalImg');
-  imgEl.style.opacity = '0.5';
-  imgEl.src = url || currentModal.thumb;
-  imgEl.onload = () => { imgEl.style.opacity = '1'; };
+function renderModalAttrs(img) {
+  const attrs = $('modalAttrs');
+  attrs.innerHTML = '';
+  const row = (label, value) => {
+    const div = document.createElement('div');
+    div.className = 'attr-row';
+    div.innerHTML = `<span class="attr-label">${label}</span><span class="attr-val"></span>`;
+    div.lastChild.textContent = value;
+    attrs.appendChild(div);
+  };
+  if (img.photographer) row('By', img.photographer);
+  row('Size', longDims(img));
 }
 
 function navigateModal(dir) {
   if (!currentModal) return;
-  const idx = allItems.findIndex(i => i.id === currentModal.id);
-  const next = idx + dir;
-  if (next >= 0 && next < allItems.length) openModal(allItems[next]);
+  const idx = modalList.findIndex(i => i.id === currentModal.id);
+  const next = modalList[idx + dir];
+  if (next) showModalItem(next);
 }
 
 function updateModalNav() {
-  if (!currentModal) return;
-  const idx = allItems.findIndex(i => i.id === currentModal.id);
-  document.getElementById('modalPrev').disabled = idx <= 0;
-  document.getElementById('modalNext').disabled = idx >= allItems.length - 1;
+  const idx = modalList.findIndex(i => i.id === currentModal.id);
+  $('modalPrev').disabled = idx <= 0;
+  $('modalNext').disabled = idx < 0 || idx >= modalList.length - 1;
 }
 
 function closeModal() {
-  document.getElementById('modalOverlay').classList.remove('open');
-  document.body.style.overflow = '';
+  if (!isOpen('modalOverlay')) return;
+  $('modalOverlay').classList.remove('open');
+  syncOverlays();
+  // Return focus to the card for the image last viewed, falling back to whatever opened the modal
+  const card = currentModal?._card;
+  const target = card?.isConnected && !isOpen('collectionOverlay') ? card.querySelector('.card-hit') : modalReturnFocus;
   currentModal = null;
-}
-function closeModalOnBg(e) { if (e.target === document.getElementById('modalOverlay')) closeModal(); }
-
-function copyUrl() {
-  navigator.clipboard.writeText(document.getElementById('modalUrl').value).then(() => {
-    const btn = document.getElementById('copyBtn');
-    btn.textContent = 'Copied!'; btn.classList.add('copied');
-    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
-  });
+  if (target?.isConnected) target.focus();
+  requestAnimationFrame(maybeAutoLoad);
 }
 
-// ---- Download ----
-function downloadUrl(url, filename) {
-  if (!safeUrl(url)) return;
-  const btn = document.getElementById('modalDownload');
-  if (btn) { btn.textContent = 'Downloading…'; btn.disabled = true; }
-  fetch(url)
-    .then(r => { if (!r.ok) throw new Error(r.status); return r.blob(); })
-    .then(blob => (blob.type.includes('svg') ? svgToPng(blob) : blob))
-    .then(blob => {
-      let name = filename || url.split('/').pop().split('?')[0] || 'image';
-      if (blob.type === 'image/png' && !/\.png$/i.test(name)) name = name.replace(/\.svg$/i, '') + '.png';
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = name;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-    })
-    .catch(() => { const safe = safeUrl(url); if (safe) window.open(safe, '_blank'); })
-    .finally(() => { if (btn) { btn.textContent = '\u2193 Download Image'; btn.disabled = false; } });
+function closeModalOnBg(e) { if (e.target === $('modalOverlay')) closeModal(); }
+
+// ---- Credits and clipboard ----
+function creditText(img) {
+  const title = truncate((img.title || 'Untitled').replace(/\s+/g, ' ').trim(), 120);
+  const by = img.photographer && img.photographer !== 'Unknown' ? img.photographer.replace(/\s+/g, ' ').trim() : '';
+  if (img.mediaType === 'icon') return `"${title}" icon from the ${by} icon set, via Iconify. License: ${img.license}. ${img.pageUrl}`;
+  return `"${title}"${by ? ' by ' + by : ''}, via ${img.source}. License: ${img.license}. ${img.pageUrl}`;
+}
+
+function flash(btn, text, ok = true) {
+  if (!btn.dataset.label) btn.dataset.label = btn.textContent;
+  btn.textContent = text;
+  btn.classList.toggle('copied', ok);
+  btn.classList.toggle('failed', !ok);
+  clearTimeout(btn._flashTimer);
+  btn._flashTimer = setTimeout(() => {
+    btn.textContent = btn.dataset.label;
+    delete btn.dataset.label;
+    btn.classList.remove('copied', 'failed');
+  }, 1800);
+}
+
+function copyText(text, btn, okText = 'Copied!') {
+  if (!navigator.clipboard?.writeText) { flash(btn, "Couldn't copy", false); return; }
+  navigator.clipboard.writeText(text).then(() => flash(btn, okText), () => flash(btn, "Couldn't copy", false));
+}
+
+function copyUrl() { copyText($('modalUrl').value, $('copyBtn')); }
+function copyCredit() { if (currentModal) copyText(creditText(currentModal), $('copyCreditBtn'), 'Credit copied!'); }
+
+function copyImage() {
+  const btn = $('copyImageBtn');
+  if (!currentModal) return;
+  if (!navigator.clipboard?.write || typeof ClipboardItem === 'undefined') { flash(btn, 'Not supported in this browser', false); return; }
+  const url = safeUrl(currentModal.srcSet.large || currentModal.srcSet.original || currentModal.thumb);
+  if (!url) return;
+  btn.dataset.label = btn.textContent;
+  btn.textContent = 'Copying…';
+  // Passing a promise keeps the write inside the click's user gesture, which Safari requires
+  const item = new ClipboardItem({ 'image/png': imageUrlToPng(url) });
+  navigator.clipboard.write([item]).then(
+    () => flash(btn, 'Image copied!'),
+    () => flash(btn, "Couldn't copy — try Download", false)
+  );
+}
+
+async function imageUrlToPng(url) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(res.status);
+  const blob = await res.blob();
+  if (blob.type.includes('svg')) return svgToPng(blob);
+  const bmp = await createImageBitmap(blob);
+  const scale = Math.min(1, COPY_MAX_PX / Math.max(bmp.width, bmp.height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(bmp.width * scale);
+  canvas.height = Math.round(bmp.height * scale);
+  canvas.getContext('2d').drawImage(bmp, 0, 0, canvas.width, canvas.height);
+  bmp.close?.();
+  return canvasToPng(canvas);
+}
+
+function canvasToPng(canvas) {
+  return new Promise((resolve, reject) =>
+    canvas.toBlob(b => (b ? resolve(b) : reject(new Error('PNG conversion failed'))), 'image/png'));
 }
 
 // Rasterize an SVG blob to a transparent PNG at the SVG's intrinsic pixel size
@@ -1144,39 +1389,296 @@ function svgToPng(svgBlob) {
       canvas.height = img.naturalHeight || 1024;
       canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
       URL.revokeObjectURL(src);
-      canvas.toBlob(b => (b ? resolve(b) : reject(new Error('PNG conversion failed'))), 'image/png');
+      canvasToPng(canvas).then(resolve, reject);
     };
     img.onerror = () => { URL.revokeObjectURL(src); reject(new Error('SVG load failed')); };
     img.src = src;
   });
 }
 
-function downloadImage() {
-  if (!currentModal) return;
-  const url = currentModal.srcSet.original || currentModal.thumb;
-  const filename = currentModal.filename || currentModal.title.replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '-') || 'image';
-  downloadUrl(url, filename);
+// ---- Downloads ----
+const EXTENSIONS = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif', 'image/avif': 'avif', 'image/tiff': 'tif', 'image/bmp': 'bmp' };
+
+function fileSlug(img) {
+  const slug = (img.title || '').toLowerCase().replace(/[^\w\s-]/g, '').trim().replace(/[\s_]+/g, '-').slice(0, 60).replace(/-+$/, '');
+  return slug || 'luminary-image';
 }
 
-// ---- Errors ----
-function showError(msg) { const el = document.getElementById('errorBox'); el.textContent = msg; el.classList.remove('hidden'); }
-function clearError() { document.getElementById('errorBox').classList.add('hidden'); }
-function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#x27;'); }
+async function fetchImageBlob(img) {
+  const url = safeUrl(img.srcSet.original || img.thumb);
+  if (!url) throw new Error('Invalid image URL');
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(res.status);
+  const blob = await res.blob();
+  return blob.type.includes('svg') ? svgToPng(blob) : blob;
+}
+
+function saveBlob(blob, name) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+async function downloadItem(img, btn) {
+  const label = btn.textContent;
+  btn.textContent = 'Downloading…';
+  btn.disabled = true;
+  try {
+    const blob = await fetchImageBlob(img);
+    saveBlob(blob, `${fileSlug(img)}.${EXTENSIONS[blob.type] || 'jpg'}`);
+  } catch {
+    // Some hosts block cross-origin downloads; opening the file lets the user save it manually
+    const url = safeUrl(img.srcSet.original || img.thumb);
+    if (url) window.open(url, '_blank', 'noopener');
+  } finally {
+    btn.textContent = label;
+    btn.disabled = false;
+  }
+}
+
+function downloadImage() { if (currentModal) downloadItem(currentModal, $('modalDownload')); }
+
+// Minimal uncompressed ZIP writer; images are already compressed, so storing them is enough
+const CRC_TABLE = (() => {
+  const t = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1;
+    t[n] = c >>> 0;
+  }
+  return t;
+})();
+
+function crc32(bytes) {
+  let c = 0xFFFFFFFF;
+  for (let i = 0; i < bytes.length; i++) c = CRC_TABLE[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8);
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+
+function makeZip(files) {
+  const enc = new TextEncoder();
+  const parts = [], central = [];
+  let offset = 0;
+  const now = new Date();
+  const dosTime = (now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1);
+  const dosDate = ((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate();
+  for (const { name, data } of files) {
+    const nameBytes = enc.encode(name);
+    const crc = crc32(data);
+    const local = new DataView(new ArrayBuffer(30));
+    local.setUint32(0, 0x04034b50, true);
+    local.setUint16(4, 20, true);
+    local.setUint16(6, 0x0800, true);          // UTF-8 file names
+    local.setUint16(8, 0, true);               // stored
+    local.setUint16(10, dosTime, true);
+    local.setUint16(12, dosDate, true);
+    local.setUint32(14, crc, true);
+    local.setUint32(18, data.length, true);
+    local.setUint32(22, data.length, true);
+    local.setUint16(26, nameBytes.length, true);
+    parts.push(local, nameBytes, data);
+
+    const cd = new DataView(new ArrayBuffer(46));
+    cd.setUint32(0, 0x02014b50, true);
+    cd.setUint16(4, 20, true);
+    cd.setUint16(6, 20, true);
+    cd.setUint16(8, 0x0800, true);
+    cd.setUint16(10, 0, true);
+    cd.setUint16(12, dosTime, true);
+    cd.setUint16(14, dosDate, true);
+    cd.setUint32(16, crc, true);
+    cd.setUint32(20, data.length, true);
+    cd.setUint32(24, data.length, true);
+    cd.setUint16(28, nameBytes.length, true);
+    cd.setUint32(42, offset, true);
+    central.push(cd, nameBytes);
+    offset += 30 + nameBytes.length + data.length;
+  }
+  const cdSize = central.reduce((n, p) => n + p.byteLength, 0);
+  const end = new DataView(new ArrayBuffer(22));
+  end.setUint32(0, 0x06054b50, true);
+  end.setUint16(8, files.length, true);
+  end.setUint16(10, files.length, true);
+  end.setUint32(12, cdSize, true);
+  end.setUint32(16, offset, true);
+  return new Blob([...parts, ...central, end], { type: 'application/zip' });
+}
+
+// ---- Collection ----
+const STORED_FIELDS = ['id', 'source', 'title', 'photographer', 'thumb', 'srcSet', 'width', 'height', 'pageUrl', 'license', 'licenseNote', 'isCC0', 'mediaType'];
+
+function loadCollection() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(COLLECTION_KEY) || '[]');
+    return Array.isArray(parsed) ? parsed.filter(i => i && typeof i.id === 'string' && i.srcSet && typeof i.srcSet === 'object') : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveCollection() {
+  try { localStorage.setItem(COLLECTION_KEY, JSON.stringify(collection)); } catch { /* storage unavailable; collection lasts for this visit */ }
+}
+
+function inCollection(id) { return collection.some(c => c.id === id); }
+
+function toggleCollection(img) {
+  if (inCollection(img.id)) collection = collection.filter(c => c.id !== img.id);
+  else collection.push(Object.fromEntries(STORED_FIELDS.map(f => [f, img[f]])));
+  saveCollection();
+  refreshCollectionUI(img.id);
+}
+
+function toggleCollectionCurrent() { if (currentModal) toggleCollection(currentModal); }
+
+function refreshCollectionUI(changedId) {
+  $('collectionCount').textContent = collection.length;
+  const item = changedId && allItems.find(i => i.id === changedId);
+  const star = item?._card?.querySelector('.star-btn');
+  if (star) {
+    const saved = inCollection(changedId);
+    star.setAttribute('aria-pressed', String(saved));
+    star.innerHTML = saved ? '&#x2605;' : '&#x2606;';
+  }
+  if (currentModal) updateModalStar();
+  if (isOpen('collectionOverlay')) renderCollection();
+}
+
+function updateModalStar() {
+  const saved = inCollection(currentModal.id);
+  const btn = $('modalStarBtn');
+  btn.setAttribute('aria-pressed', String(saved));
+  btn.innerHTML = saved ? '&#x2605; In collection' : '&#x2606; Save to collection';
+}
+
+function openCollection() {
+  collectionReturnFocus = document.activeElement;
+  renderCollection();
+  $('collectionOverlay').classList.add('open');
+  syncOverlays();
+  $('collectionClose').focus();
+}
+
+function closeCollection() {
+  if (!isOpen('collectionOverlay')) return;
+  $('collectionOverlay').classList.remove('open');
+  syncOverlays();
+  if (collectionReturnFocus?.isConnected) collectionReturnFocus.focus();
+  requestAnimationFrame(maybeAutoLoad);
+}
+
+function renderCollection() {
+  const grid = $('collectionGrid');
+  const n = collection.length;
+  $('collectionTitle').textContent = `Your collection (${n})`;
+  ['zipBtn', 'copyCreditsBtn', 'clearCollectionBtn'].forEach(id => { $(id).disabled = !n; });
+  grid.innerHTML = '';
+  if (!n) {
+    grid.innerHTML = '<li class="collection-empty">Nothing saved yet. Use the &#x2606; on any image to add it here.</li>';
+    return;
+  }
+  collection.forEach((img, i) => {
+    const li = document.createElement('li');
+    li.className = 'collection-item' + (img.mediaType === 'icon' ? ' icon-card' : '');
+    li.innerHTML =
+      `<button type="button" class="card-hit" aria-label="${escHtml(truncate(img.title, 120) + ' — ' + img.source)}"></button>` +
+      `<img src="${escHtml(safeUrl(img.thumb))}" alt="" loading="lazy">` +
+      `<button type="button" class="collection-remove" aria-label="Remove ${escHtml(truncate(img.title, 60))} from collection">&#x2715;</button>`;
+    const hit = li.querySelector('.card-hit');
+    hit.addEventListener('click', () => openModal(img, collection.slice(), hit));
+    li.querySelector('.collection-remove').addEventListener('click', () => {
+      toggleCollection(img);
+      // Keep focus in the panel: move to the next remove button, or the close button if the list emptied
+      const removes = grid.querySelectorAll('.collection-remove');
+      (removes[Math.min(i, removes.length - 1)] || $('collectionClose')).focus();
+    });
+    grid.appendChild(li);
+  });
+}
+
+function copyAllCredits() {
+  copyText(collection.map(creditText).join('\n\n'), $('copyCreditsBtn'), 'Credits copied!');
+}
+
+function clearCollection() {
+  if (!collection.length || !confirm(`Remove all ${collection.length} images from your collection?`)) return;
+  const ids = collection.map(c => c.id);
+  collection = [];
+  saveCollection();
+  ids.forEach(id => refreshCollectionUI(id));
+  $('collectionClose').focus();
+}
+
+async function downloadCollectionZip() {
+  if (!collection.length) return;
+  const btn = $('zipBtn');
+  btn.disabled = true;
+  const items = collection.slice();
+  const files = [], failed = [];
+  for (let i = 0; i < items.length; i++) {
+    btn.textContent = `Preparing ${i + 1} of ${items.length}…`;
+    try {
+      const blob = await fetchImageBlob(items[i]);
+      const name = `${String(i + 1).padStart(2, '0')}-${fileSlug(items[i])}.${EXTENSIONS[blob.type] || 'jpg'}`;
+      files.push({ name, data: new Uint8Array(await blob.arrayBuffer()) });
+    } catch {
+      failed.push(items[i]);
+    }
+  }
+  let credits = items.map(creditText).join('\n\n') + '\n';
+  if (failed.length) credits += '\nThese images could not be downloaded automatically. Open each page to save it:\n' + failed.map(f => `- ${f.pageUrl}`).join('\n') + '\n';
+  files.push({ name: 'credits.txt', data: new TextEncoder().encode(credits) });
+  saveBlob(makeZip(files), 'luminary-collection.zip');
+  btn.disabled = false;
+  btn.textContent = 'Download all (.zip)';
+  flash(btn, failed.length ? `Done — ${failed.length} couldn't be added (see credits.txt)` : 'Downloaded!', !failed.length);
+}
+
+// ---- Helpers ----
+function showError(msg) { const el = $('errorBox'); el.textContent = msg; el.classList.remove('hidden'); }
+function clearError() { $('errorBox').classList.add('hidden'); }
+function escHtml(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#x27;'); }
 function safeUrl(url) { try { const u = new URL(url); return (u.protocol === 'https:' || u.protocol === 'http:') ? url : ''; } catch { return ''; } }
+function stripTags(s) { return new DOMParser().parseFromString(String(s), 'text/html').body.textContent.trim(); }
+function truncate(s, n) { s = String(s || ''); return s.length > n ? s.slice(0, n - 1) + '…' : s; }
+
+let announceTimer = null;
+function announce(text) {
+  clearTimeout(announceTimer);
+  announceTimer = setTimeout(() => { $('srStatus').textContent = text; }, 400);
+}
+
+// ---- Events ----
+$('stateBox').addEventListener('click', e => {
+  const btn = e.target.closest('[data-clear-filter]');
+  if (btn) clearFilter(btn.dataset.clearFilter);
+});
 
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') closeModal();
-  if (e.key === 'ArrowLeft' && currentModal) navigateModal(-1);
-  if (e.key === 'ArrowRight' && currentModal) navigateModal(1);
+  if (e.key === 'Escape') {
+    if (isOpen('modalOverlay')) closeModal();
+    else if (isOpen('collectionOverlay')) closeCollection();
+    return;
+  }
+  if (!isOpen('modalOverlay') || e.target.matches('input, textarea')) return;
+  if (e.key === 'ArrowLeft') navigateModal(-1);
+  if (e.key === 'ArrowRight') navigateModal(1);
 });
+
+refreshCollectionUI();
 
 // ---- Stashly Integration ----
 async function sendToStashly() {
   if (!currentModal) return;
-  const btn = document.getElementById('stashlyBtn');
+  const btn = $('stashlyBtn');
   const origText = btn.innerHTML;
-  btn.innerHTML = 'Sending...';
+  btn.textContent = 'Sending...';
   btn.disabled = true;
+  const reset = () => { btn.innerHTML = origText; btn.style.borderColor = ''; btn.style.color = ''; btn.disabled = false; };
 
   try {
     const img = currentModal;
@@ -1192,33 +1694,19 @@ async function sendToStashly() {
         photographer: img.photographer || '',
       }),
     });
-
-    if (res.ok) {
-      btn.innerHTML = '&#x2713; Sent!';
-      btn.style.borderColor = '#10b981';
-      btn.style.color = '#10b981';
-      setTimeout(() => {
-        btn.innerHTML = origText;
-        btn.style.borderColor = '';
-        btn.style.color = '';
-        btn.disabled = false;
-      }, 2000);
-    } else {
-      const err = await res.json();
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
       throw new Error(err.error || 'Failed');
     }
+    btn.textContent = '✓ Sent!';
+    btn.style.borderColor = '#10b981';
+    btn.style.color = '#10b981';
+    setTimeout(reset, 2000);
   } catch (e) {
-    btn.innerHTML = e.message === 'Failed to fetch'
-      ? '&#x2717; Stashly not running'
-      : '&#x2717; ' + e.message;
+    btn.textContent = e.message === 'Failed to fetch' ? '✗ Stashly not running' : '✗ ' + e.message;
     btn.style.borderColor = '#e63946';
     btn.style.color = '#e63946';
-    setTimeout(() => {
-      btn.innerHTML = origText;
-      btn.style.borderColor = '';
-      btn.style.color = '';
-      btn.disabled = false;
-    }, 3000);
+    setTimeout(reset, 3000);
   }
 }
 </script>

@@ -1,0 +1,7 @@
+name = "luminary-proxy"
+main = "worker.js"
+compatibility_date = "2026-10-01"
+
+# Optional: restrict which sites may call the proxy (comma-separated). Unset allows any site.
+# [vars]
+# ALLOWED_ORIGINS = "https://yourname.github.io"

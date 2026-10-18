@@ -94,6 +94,7 @@
   .dot-pixabay { background: #2ec66d; }
   .dot-openverse { background: #e5a423; }
   .dot-wikimedia { background: #069; }
+  .dot-judaica { background: #3b6fd4; }
   .dot-nasa { background: #fc3d21; }
   .dot-iconify { background: #1769aa; }
 
@@ -408,6 +409,7 @@
           <button type="button" class="chip active" id="chip-pixabay" aria-pressed="true" onclick="toggleChip('pixabay')"><span class="dot dot-pixabay" aria-hidden="true"></span>Pixabay</button>
           <button type="button" class="chip active" id="chip-openverse" aria-pressed="true" onclick="toggleChip('openverse')"><span class="dot dot-openverse" aria-hidden="true"></span>Openverse</button>
           <button type="button" class="chip active" id="chip-wikimedia" aria-pressed="true" onclick="toggleChip('wikimedia')"><span class="dot dot-wikimedia" aria-hidden="true"></span>Wikimedia</button>
+          <button type="button" class="chip" id="chip-judaica" aria-pressed="false" onclick="toggleChip('judaica')" title="Wikimedia Commons, focused on Jewish and Judaic images"><span class="dot dot-judaica" aria-hidden="true"></span>Judaica</button>
           <button type="button" class="chip active" id="chip-nasa" aria-pressed="true" onclick="toggleChip('nasa')"><span class="dot dot-nasa" aria-hidden="true"></span>NASA</button>
           <button type="button" class="chip active" id="chip-iconify" aria-pressed="true" onclick="toggleChip('iconify')"><span class="dot dot-iconify" aria-hidden="true"></span>Iconify</button>
         </div>
@@ -614,8 +616,9 @@
 
 <script>
 // ---- Configuration ----
-const ALL_SOURCES = ['pexels','unsplash','pixabay','openverse','wikimedia','nasa','iconify'];
-const SOURCE_LABELS = { pexels:'Pexels', unsplash:'Unsplash', pixabay:'Pixabay', openverse:'Openverse', wikimedia:'Wikimedia', nasa:'NASA', iconify:'Iconify' };
+const ALL_SOURCES = ['pexels','unsplash','pixabay','openverse','wikimedia','judaica','nasa','iconify'];
+const OFF_BY_DEFAULT = ['judaica'];  // specialised sources the user switches on when needed
+const SOURCE_LABELS = { pexels:'Pexels', unsplash:'Unsplash', pixabay:'Pixabay', openverse:'Openverse', wikimedia:'Wikimedia', judaica:'Judaica', nasa:'NASA', iconify:'Iconify' };
 const SOURCE_KEYS = Object.fromEntries(Object.entries(SOURCE_LABELS).map(([k, v]) => [v, k]));
 const PER_SOURCE = 8;
 const MIN_DIM = 500;          // drop images smaller than 500×500 when the source reports dimensions
@@ -631,7 +634,7 @@ function keyedFetch(service, params) {
 }
 
 // ---- State ----
-let activeSources = Object.fromEntries(ALL_SOURCES.map(s => [s, true]));
+let activeSources = Object.fromEntries(ALL_SOURCES.map(s => [s, !OFF_BY_DEFAULT.includes(s)]));
 let viewMode = 'grid';
 let licenseFilter = 'all';      // 'all' | 'free' | 'attribution'
 let sizeFilter = 'all';         // 'all' | 'large' | 'xl'
@@ -645,6 +648,8 @@ let sourceCounts = {};
 let allItems = [];
 let displayedItems = [];
 let seenIds = new Set();
+let sourceSeen = {};       // ids each source has returned, to detect when it starts repeating itself
+let judaicaQuery = null;   // which Judaica query style worked for the current search
 let loading = false;
 let loadToken = 0;              // bumped on every new search so late responses from an old search are ignored
 let autoLoadPaused = false;
@@ -692,7 +697,7 @@ function orientationOf(img) {
 // One test per active filter, keyed so explainEmpty() can ask "what if this one were off?"
 function filterTests() {
   const t = {};
-  if (ALL_SOURCES.some(s => !activeSources[s])) t.sources = img => activeSources[SOURCE_KEYS[img.source]];
+  if (ALL_SOURCES.some(s => !activeSources[s])) t.sources = img => activeSources[img.sourceKey || SOURCE_KEYS[img.source]];
   if (licenseFilter === 'free') t.license = img => img.isCC0;
   else if (licenseFilter === 'attribution') t.license = img => !img.isCC0;
   const min = sizeFilter === 'large' ? 1000 : sizeFilter === 'xl' ? 5000 : 0;
@@ -732,7 +737,8 @@ function setTypeFilter(mode) {
 }
 
 function clearFilter(key) {
-  if (key === 'sources') ALL_SOURCES.forEach(s => { if (!activeSources[s]) toggleChip(s); });
+  // Only re-enable sources whose results are being hidden, not ones the user never turned on
+  if (key === 'sources') ALL_SOURCES.forEach(s => { if (!activeSources[s] && allItems.some(i => i.sourceKey === s)) toggleChip(s); });
   const groups = {
     license: ['freeOnlyToggle', 'attrOnlyToggle'],
     size: ['lgOnlyToggle', 'xlOnlyToggle'],
@@ -783,6 +789,8 @@ async function doSearch() {
   allItems = [];
   displayedItems = [];
   seenIds = new Set();
+  sourceSeen = Object.fromEntries(ALL_SOURCES.map(s => [s, new Set()]));
+  judaicaQuery = null;
   $('resultsGrid').innerHTML = '';
   renderStatus();
 
@@ -829,7 +837,7 @@ function shuffle(arr) {
 
 const FETCHERS = {
   pexels: fetchPexels, unsplash: fetchUnsplash, pixabay: fetchPixabay,
-  openverse: fetchOpenverse, wikimedia: fetchWikimedia, nasa: fetchNasa,
+  openverse: fetchOpenverse, wikimedia: fetchWikimedia, judaica: fetchJudaica, nasa: fetchNasa,
   iconify: fetchIconify,
 };
 
@@ -845,14 +853,16 @@ function applyPage({ sources, results }) {
   results.forEach((r, i) => {
     const src = sources[i];
     if (r.status !== 'fulfilled') { errors.push(r.reason); return; }
-    const fresh = r.value.items.filter(img => !seenIds.has(img.id));
-    fresh.forEach(img => seenIds.add(img.id));
+    const newToSource = r.value.items.filter(img => !sourceSeen[src].has(img.id));
+    newToSource.forEach(img => sourceSeen[src].add(img.id));
+    const fresh = newToSource.filter(img => !seenIds.has(img.id));
+    fresh.forEach(img => { seenIds.add(img.id); img.sourceKey = src; });
     const items = fresh.filter(img => !img.width || !img.height || (img.width >= MIN_DIM && img.height >= MIN_DIM));
     added.push(...items);
     pageState[src]++;
     sourceCounts[src] += items.length;
     // A page of nothing but repeats means the source has run out, even if it claims otherwise
-    if (r.value.done || !fresh.length) exhausted[src] = true;
+    if (r.value.done || !newToSource.length) exhausted[src] = true;
   });
   shuffle(added);
   allItems.push(...added);
@@ -937,10 +947,25 @@ async function fetchOpenverse(q, page) {
   return { items, done: page >= (data.page_count || 0) };
 }
 
-async function fetchWikimedia(q, page) {
+function fetchWikimedia(q, page) { return wikimediaSearch(q, page, 'Wikimedia'); }
+
+// Judaica: Wikimedia Commons limited to the Judaism category tree. That tree is large enough that
+// Wikimedia's deepcategory filter may refuse it, so fall back to requiring the word "Jewish".
+const JUDAICA_QUERIES = [q => `${q} deepcategory:"Judaism"`, q => `${q} Jewish`];
+async function fetchJudaica(q, page) {
+  if (judaicaQuery !== null) return wikimediaSearch(JUDAICA_QUERIES[judaicaQuery](q), page, 'Judaica');
+  let result;
+  for (let i = 0; i < JUDAICA_QUERIES.length; i++) {
+    result = await wikimediaSearch(JUDAICA_QUERIES[i](q), page, 'Judaica');
+    if (result.items.length) { judaicaQuery = i; break; }
+  }
+  return result;
+}
+
+async function wikimediaSearch(search, page, label) {
   const offset = (page - 1) * PER_SOURCE;
-  const res = await fetch(`https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrnamespace=6&gsrsearch=${encodeURIComponent(q)}&gsrlimit=${PER_SOURCE}&gsroffset=${offset}&prop=imageinfo&iiprop=url|extmetadata|size|mime&iiurlwidth=600&format=json&origin=*`);
-  if (!res.ok) throw new Error('Wikimedia: ' + res.status);
+  const res = await fetch(`https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrnamespace=6&gsrsearch=${encodeURIComponent(search)}&gsrlimit=${PER_SOURCE}&gsroffset=${offset}&prop=imageinfo&iiprop=url|extmetadata|size|mime&iiurlwidth=600&format=json&origin=*`);
+  if (!res.ok) throw new Error(label + ': ' + res.status);
   const data = await res.json();
   const pages = data.query?.pages || {};
   const items = Object.values(pages).filter(p => (p.imageinfo?.[0]?.mime || '').startsWith('image/')).map(p => {

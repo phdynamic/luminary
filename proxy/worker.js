@@ -44,6 +44,9 @@ const ROUTES = {
   },
   nli: {
     build: q => forward('https://api.nli.org.il/openlibrary/search', q, ['query', 'result_page', 'material_type', 'availability_type', 'output_format']),
+    // NLI's server doesn't decode %2C, so its "field,operator,value" query syntax needs literal commas;
+    // spaces are sent as %20, the way a browser does
+    literalCommas: true,
     sign: (upstream, headers, env) => upstream.searchParams.set('api_key', env.NLI_KEY),
     headers: BROWSER_LIKE,
     retry: true,
@@ -105,6 +108,8 @@ export default {
     if (!upstream) return new Response('Bad request', { status: 400, headers: cors });
     const headers = new Headers({ Accept: 'application/json', ...route.headers });
     route.sign(upstream, headers, env);
+    // Done last: any later searchParams change would re-encode the commas
+    if (route.literalCommas) upstream.search = upstream.search.replace(/%2C/gi, ',').replace(/\+/g, '%20');
 
     let res = await fetch(upstream, { headers });
     if (route.retry && res.status >= 500) {

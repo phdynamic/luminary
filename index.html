@@ -94,7 +94,6 @@
   .dot-pixabay { background: #2ec66d; }
   .dot-openverse { background: #e5a423; }
   .dot-wikimedia { background: #069; }
-  .dot-judaica { background: #3b6fd4; }
   .dot-nasa { background: #fc3d21; }
   .dot-iconify { background: #1769aa; }
 
@@ -409,7 +408,6 @@
           <button type="button" class="chip active" id="chip-pixabay" aria-pressed="true" onclick="toggleChip('pixabay')"><span class="dot dot-pixabay" aria-hidden="true"></span>Pixabay</button>
           <button type="button" class="chip active" id="chip-openverse" aria-pressed="true" onclick="toggleChip('openverse')"><span class="dot dot-openverse" aria-hidden="true"></span>Openverse</button>
           <button type="button" class="chip active" id="chip-wikimedia" aria-pressed="true" onclick="toggleChip('wikimedia')"><span class="dot dot-wikimedia" aria-hidden="true"></span>Wikimedia</button>
-          <button type="button" class="chip" id="chip-judaica" aria-pressed="false" onclick="toggleChip('judaica')" title="Wikimedia Commons, focused on Jewish and Judaic images"><span class="dot dot-judaica" aria-hidden="true"></span>Judaica</button>
           <button type="button" class="chip active" id="chip-nasa" aria-pressed="true" onclick="toggleChip('nasa')"><span class="dot dot-nasa" aria-hidden="true"></span>NASA</button>
           <button type="button" class="chip active" id="chip-iconify" aria-pressed="true" onclick="toggleChip('iconify')"><span class="dot dot-iconify" aria-hidden="true"></span>Iconify</button>
         </div>
@@ -616,9 +614,8 @@
 
 <script>
 // ---- Configuration ----
-const ALL_SOURCES = ['pexels','unsplash','pixabay','openverse','wikimedia','judaica','nasa','iconify'];
-const OFF_BY_DEFAULT = ['judaica'];  // specialised sources the user switches on when needed
-const SOURCE_LABELS = { pexels:'Pexels', unsplash:'Unsplash', pixabay:'Pixabay', openverse:'Openverse', wikimedia:'Wikimedia', judaica:'Judaica', nasa:'NASA', iconify:'Iconify' };
+const ALL_SOURCES = ['pexels','unsplash','pixabay','openverse','wikimedia','nasa','iconify'];
+const SOURCE_LABELS = { pexels:'Pexels', unsplash:'Unsplash', pixabay:'Pixabay', openverse:'Openverse', wikimedia:'Wikimedia', nasa:'NASA', iconify:'Iconify' };
 const SOURCE_KEYS = Object.fromEntries(Object.entries(SOURCE_LABELS).map(([k, v]) => [v, k]));
 const PER_SOURCE = 8;
 const MIN_DIM = 500;          // drop images smaller than 500×500 when the source reports dimensions
@@ -634,7 +631,7 @@ function keyedFetch(service, params) {
 }
 
 // ---- State ----
-let activeSources = Object.fromEntries(ALL_SOURCES.map(s => [s, !OFF_BY_DEFAULT.includes(s)]));
+let activeSources = Object.fromEntries(ALL_SOURCES.map(s => [s, true]));
 let viewMode = 'grid';
 let licenseFilter = 'all';      // 'all' | 'free' | 'attribution'
 let sizeFilter = 'all';         // 'all' | 'large' | 'xl'
@@ -649,7 +646,6 @@ let allItems = [];
 let displayedItems = [];
 let seenIds = new Set();
 let sourceSeen = {};       // ids each source has returned, to detect when it starts repeating itself
-let judaicaQuery = null;   // which Judaica query style worked for the current search
 let loading = false;
 let loadToken = 0;              // bumped on every new search so late responses from an old search are ignored
 let autoLoadPaused = false;
@@ -790,7 +786,6 @@ async function doSearch() {
   displayedItems = [];
   seenIds = new Set();
   sourceSeen = Object.fromEntries(ALL_SOURCES.map(s => [s, new Set()]));
-  judaicaQuery = null;
   $('resultsGrid').innerHTML = '';
   renderStatus();
 
@@ -837,7 +832,7 @@ function shuffle(arr) {
 
 const FETCHERS = {
   pexels: fetchPexels, unsplash: fetchUnsplash, pixabay: fetchPixabay,
-  openverse: fetchOpenverse, wikimedia: fetchWikimedia, judaica: fetchJudaica, nasa: fetchNasa,
+  openverse: fetchOpenverse, wikimedia: fetchWikimedia, nasa: fetchNasa,
   iconify: fetchIconify,
 };
 
@@ -948,19 +943,6 @@ async function fetchOpenverse(q, page) {
 }
 
 function fetchWikimedia(q, page) { return wikimediaSearch(q, page, 'Wikimedia'); }
-
-// Judaica: Wikimedia Commons limited to the Judaism category tree. That tree is large enough that
-// Wikimedia's deepcategory filter may refuse it, so fall back to requiring the word "Jewish".
-const JUDAICA_QUERIES = [q => `${q} deepcategory:"Judaism"`, q => `${q} Jewish`];
-async function fetchJudaica(q, page) {
-  if (judaicaQuery !== null) return wikimediaSearch(JUDAICA_QUERIES[judaicaQuery](q), page, 'Judaica');
-  let result;
-  for (let i = 0; i < JUDAICA_QUERIES.length; i++) {
-    result = await wikimediaSearch(JUDAICA_QUERIES[i](q), page, 'Judaica');
-    if (result.items.length) { judaicaQuery = i; break; }
-  }
-  return result;
-}
 
 async function wikimediaSearch(search, page, label) {
   const offset = (page - 1) * PER_SOURCE;

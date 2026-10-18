@@ -1049,9 +1049,11 @@ async function fetchNli(q, page) {
     material_type: 'photograph',
     availability_type: 'online_and_api_access',
     output_format: 'json',
-    result_page: page,
+    result_page: page - 1,  // NLI counts pages from 0
   });
   const res = await fetch(`${PROXY_URL}/nli?${params}`);
+  // NLI answers a request past the last page with a server error rather than an empty list
+  if (!res.ok && page > 1 && res.status >= 500) return { items: [], done: true };
   if (!res.ok) throw new Error('NLI: ' + res.status);
   const records = await res.json();
   if (!Array.isArray(records)) return { items: [], done: true };

@@ -12,12 +12,6 @@
 
 const unsplashAuth = (upstream, headers, env) => headers.set('Authorization', `Client-ID ${env.UNSPLASH_KEY}`);
 
-// NLI's server drops requests that lack a user agent or only accept JSON, so send what a browser would
-const BROWSER_LIKE = {
-  'User-Agent': 'Mozilla/5.0 (compatible; Luminary/1.0; +https://phdynamic.github.io/luminary/)',
-  Accept: 'application/json, text/plain, */*',
-};
-
 // Each route builds the upstream URL from the incoming query, copying only parameters the app uses,
 // so the proxy can't be pointed at other endpoints. cacheSeconds sets how long browsers may reuse a response.
 const ROUTES = {
@@ -44,20 +38,13 @@ const ROUTES = {
   },
   nli: {
     build: q => forward('https://api.nli.org.il/openlibrary/search', q, ['query', 'result_page', 'material_type', 'availability_type', 'output_format']),
-    // NLI's server doesn't decode %2C, so its "field,operator,value" query syntax needs literal commas;
-    // spaces are sent as %20, the way a browser does
-    literalCommas: true,
     sign: (upstream, headers, env) => upstream.searchParams.set('api_key', env.NLI_KEY),
-    headers: BROWSER_LIKE,
-    retry: true,
     cacheSeconds: 3600,
   },
   // NLI search results don't include image addresses; each record's IIIF manifest does
   'nli-manifest': {
     build: q => (/^\d{6,25}$/.test(q.get('id') || '') ? new URL(`https://iiif.nli.org.il/IIIFv21/${q.get('id')}/manifest`) : null),
     sign: () => {},
-    headers: BROWSER_LIKE,
-    retry: true,
     cacheSeconds: 86400,
   },
 };
@@ -106,16 +93,10 @@ export default {
 
     const upstream = route.build(url.searchParams);
     if (!upstream) return new Response('Bad request', { status: 400, headers: cors });
-    const headers = new Headers({ Accept: 'application/json', ...route.headers });
+    const headers = new Headers({ Accept: 'application/json' });
     route.sign(upstream, headers, env);
-    // Done last: any later searchParams change would re-encode the commas
-    if (route.literalCommas) upstream.search = upstream.search.replace(/%2C/gi, ',').replace(/\+/g, '%20');
 
-    let res = await fetch(upstream, { headers });
-    if (route.retry && res.status >= 500) {
-      await new Promise(r => setTimeout(r, 500));
-      res = await fetch(upstream, { headers });
-    }
+    const res = await fetch(upstream, { headers });
     if (!res.ok) {
       // Visible in the worker's live logs; keys are blanked out so logs never contain secrets
       const snippet = (await res.clone().text()).replace(/\s+/g, ' ').slice(0, 300);

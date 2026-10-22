@@ -796,35 +796,23 @@ async function doSearch() {
   seenIds = new Set();
   sourceSeen = Object.fromEntries(ALL_SOURCES.map(s => [s, new Set()]));
   $('resultsGrid').innerHTML = '';
+  loading = true;
   renderStatus();
 
-  const result = await fetchPage(q);
+  await loadPage(q, token);
   if (token !== loadToken) return;
-  applyPage(result);
-  loading = false;
-  reRender();
   announce(`${displayedItems.length} images found for ${q}.`);
-  requestAnimationFrame(maybeAutoLoad);
 }
 
 async function loadMore() {
   if (loading || !currentQuery || !hasMore()) return;
   if (!availableSources().length) { scheduleAfterCooldown(); updateScrollStatus(); return; }
   const token = loadToken;
-  loading = true;
-  clearError();
-  updateScrollStatus();
-  const result = await fetchPage(currentQuery);
+  const { added, visible } = await loadPage(currentQuery, token);
   if (token !== loadToken) return;
-  const added = applyPage(result);
-  loading = false;
-  const visible = applyFilter(added);
-  appendCards(visible);
   // Stop auto-loading if a whole batch produced nothing visible, so filters can't trigger endless fetching
-  if (!visible.length && added.length) autoLoadPaused = true;
-  renderStatus();
-  if (visible.length) announce(`${visible.length} more images loaded.`);
-  requestAnimationFrame(maybeAutoLoad);
+  if (!visible && added) { autoLoadPaused = true; updateScrollStatus(); }
+  if (visible) announce(`${visible} more images loaded.`);
 }
 
 function resumeAutoLoad() {
@@ -846,26 +834,103 @@ const FETCHERS = {
   iconify: fetchIconify, nli: fetchNli,
 };
 
-// Fetchers don't touch shared state; applyPage() does, and only for the current search
-async function fetchPage(q) {
+// ---- Loading a page from every source ----
+// Fetchers don't touch shared state; applyResults() does, and only for the current search
+const SOURCE_TIMEOUT_MS = 12000;   // a source that hasn't answered by then is dropped from this page
+const LOOKUP_TIMEOUT_MS = 6000;    // per-image lookups (NASA sizes, NLI manifests) fall back to the thumbnail
+const GROUP_MS = 1000;             // results arriving this quickly are shown together, shuffled
+const SKIP_AFTER_FAILURE_S = 60;   // how long to skip a source that timed out or couldn't be reached
+let pendingSources = [];
+let pageErrors = [];
+
+// Asks every available source for its next page. Results that arrive within GROUP_MS are shown together;
+// slower sources are added as they arrive, so one slow service never holds up the others.
+function loadPage(q, token) {
   const sources = availableSources();
-  const results = await Promise.allSettled(sources.map(s => FETCHERS[s](q, pageState[s])));
-  return { sources, results };
+  loading = true;
+  pendingSources = sources.slice();
+  pageErrors = [];
+  clearError();
+  updateScrollStatus();
+  let buffer = [], grouping = true, added = 0, visible = 0;
+  const flush = () => {
+    if (token !== loadToken || !buffer.length) return;
+    const items = applyResults(buffer);
+    buffer = [];
+    const shown = applyFilter(items);
+    appendCards(shown);
+    added += items.length;
+    visible += shown.length;
+    renderStatus();
+  };
+  return new Promise(resolve => {
+    let remaining = sources.length;
+    const timer = setTimeout(() => { grouping = false; flush(); }, GROUP_MS);
+    const finish = () => {
+      clearTimeout(timer);
+      if (token === loadToken) {
+        flush();
+        loading = false;
+        pendingSources = [];
+        renderStatus();
+        requestAnimationFrame(maybeAutoLoad);
+      }
+      resolve({ added, visible });
+    };
+    if (!remaining) { finish(); return; }
+    sources.forEach(src => {
+      fetchSource(src, q, pageState[src])
+        .then(value => ({ status: 'fulfilled', value }), reason => ({ status: 'rejected', reason }))
+        .then(result => {
+          if (token === loadToken) {
+            pendingSources = pendingSources.filter(s => s !== src);
+            buffer.push({ src, result });
+            if (grouping) updateScrollStatus(); else flush();
+          }
+          if (--remaining === 0) finish();
+        });
+    });
+  });
 }
 
-function applyPage({ sources, results }) {
-  const added = [], errors = [];
-  results.forEach((r, i) => {
-    const src = sources[i];
+// Runs one source's fetcher with a time limit, turning failures into messages that name the source
+function fetchSource(src, q, page) {
+  const label = SOURCE_LABELS[src];
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(Object.assign(new Error(`${label}: no response after ${SOURCE_TIMEOUT_MS / 1000} seconds`), { kind: 'timeout' })), SOURCE_TIMEOUT_MS);
+  });
+  const request = FETCHERS[src](q, page).catch(err => {
+    if (err?.status) throw err;  // the service answered, with an error code
+    if (err instanceof TypeError) throw Object.assign(new Error(`${label}: couldn't connect`), { kind: 'network' });
+    throw Object.assign(new Error(`${label}: unexpected response`), { kind: 'bad-response' });
+  });
+  return Promise.race([request, timeout]).finally(() => clearTimeout(timer));
+}
+
+// Resolves to `fallback` if `promise` takes longer than `ms`
+function within(promise, ms, fallback) {
+  let timer;
+  return Promise.race([promise, new Promise(resolve => { timer = setTimeout(() => resolve(fallback), ms); })]).finally(() => clearTimeout(timer));
+}
+
+function applyResults(entries) {
+  const added = [];
+  entries.forEach(({ src, result: r }) => {
     if (r.status !== 'fulfilled') {
       const err = r.reason;
+      const label = SOURCE_LABELS[src];
       if (err?.status === 429) {
         cooldownUntil[src] = Date.now() + err.waitSeconds * 1000;
         const mins = Math.max(1, Math.round(err.waitSeconds / 60));
-        errors.push(new Error(`${SOURCE_LABELS[src]} is limiting requests right now; its results will resume in about ${mins} minute${mins === 1 ? '' : 's'}.`));
+        pageErrors.push(`${label} is limiting requests right now; its results will resume in about ${mins} minute${mins === 1 ? '' : 's'}.`);
+        scheduleAfterCooldown();
+      } else if (err?.kind === 'timeout' || err?.kind === 'network') {
+        cooldownUntil[src] = Date.now() + SKIP_AFTER_FAILURE_S * 1000;
+        pageErrors.push(`${err.message}. Skipping ${label} for a minute.`);
         scheduleAfterCooldown();
       } else {
-        errors.push(err);
+        pageErrors.push(err?.message || String(err));
       }
       return;
     }
@@ -883,7 +948,7 @@ function applyPage({ sources, results }) {
   shuffle(added);
   allItems.push(...added);
   added.forEach(measureImage);
-  if (errors.length) showError(errors.map(e => e.message || String(e)).join(' · '));
+  if (pageErrors.length) showError(pageErrors.join(' · '));
   return added;
 }
 
@@ -1029,7 +1094,7 @@ async function fetchNasa(q, page) {
   const items = await Promise.all((collectionData.items || []).filter(item => item.links?.length > 0).map(async item => {
     const d = item.data[0];
     const thumb = item.links[0].href;
-    const assets = await nasaAssets(d.nasa_id);
+    const assets = await within(nasaAssets(d.nasa_id), LOOKUP_TIMEOUT_MS, []);
     const pick = size => assets.find(u => new RegExp(`~${size}\\.(jpe?g|png|gif|webp)$`, 'i').test(u));
     // Originals are sometimes TIFFs, which browsers can't show, so fall back to the large JPEG
     const original = pick('orig') || pick('large') || thumb;
@@ -1107,7 +1172,7 @@ async function fetchNli(q, page) {
   const usable = records.filter(r => /^\d+$/.test(dcValue(r, 'recordid'))).slice(0, 20);
   const items = await Promise.all(usable.map(async r => {
     const recordId = dcValue(r, 'recordid');
-    const image = await nliImage(recordId);
+    const image = await within(nliImage(recordId), LOOKUP_TIMEOUT_MS, null);
     const fallback = safeUrl(dcValue(r, 'thumbnail'));
     if (!image && !fallback) return null;
     const iiif = size => (image ? `${image.base}/full/${size}/0/default.jpg` : fallback);
@@ -1383,7 +1448,12 @@ function maybeAutoLoad() {
 function updateScrollStatus() {
   const el = $('scrollStatus');
   if (!currentQuery || !allItems.length || !ALL_SOURCES.some(s => activeSources[s])) { el.innerHTML = ''; return; }
-  if (loading) el.innerHTML = '<div class="spinner" aria-hidden="true"></div>Loading more images…';
+  if (loading) {
+    const names = pendingSources.map(s => SOURCE_LABELS[s]);
+    const list = names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.at(-1)}` : names[0];
+    el.innerHTML = '<div class="spinner" aria-hidden="true"></div>';
+    el.append(names.length && names.length < ALL_SOURCES.length ? `Still waiting for ${list}…` : 'Loading more images…');
+  }
   else if (!hasMore()) el.textContent = "You've reached the end of the results.";
   else if (!availableSources().length) el.textContent = 'More results will load once the image services allow more requests.';
   else if (autoLoadPaused) el.innerHTML = '<p>The last batch had no images that match your filters.</p><button type="button" class="btn-load-more" onclick="resumeAutoLoad()">Load more images</button>';

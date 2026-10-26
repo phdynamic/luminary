@@ -264,7 +264,7 @@
   #modalOverlay { z-index: 110; }
   .modal { position: relative; background: var(--bg2); border: 1px solid var(--border2); border-radius: 16px; width: auto; max-width: min(1200px, calc(100vw - 120px)); max-height: 90vh; overflow: hidden; display: grid; grid-template-columns: auto 340px; transform: scale(0.96); transition: transform 0.2s; }
   .modal-overlay.open .modal { transform: scale(1); }
-  .modal-img-pane { background: var(--bg3); display: flex; align-items: center; justify-content: center; min-width: 280px; min-height: 280px; max-height: 90vh; overflow: hidden; }
+  .modal-img-pane { position: relative; background: var(--bg3); display: flex; align-items: center; justify-content: center; min-width: 280px; min-height: 280px; max-height: 90vh; overflow: hidden; }
   .modal-img-pane.loading img, .modal-img-pane:not(.loading) .img-skeleton { display: none; }
   .img-skeleton, .text-skeleton { background: linear-gradient(90deg, var(--surface) 25%, #3d3460 50%, var(--surface) 75%); background-size: 200% 100%; animation: shimmer 1.2s linear infinite; }
   .img-skeleton { display: flex; align-items: center; justify-content: center; border-radius: 8px; color: var(--text2); font-size: 13px; }
@@ -302,6 +302,14 @@
   .btn-open:hover { border-color: var(--purple3); color: var(--purple2); }
   .btn-row { display: flex; flex-direction: column; gap: 8px; }
   .modal-view { display: flex; flex-direction: column; gap: 14px; }
+  .crop-frame { position: absolute; box-shadow: 0 0 0 9999px rgba(8,6,16,0.62); outline: 2px solid #fff; outline-offset: 0; cursor: move; touch-action: none;
+    background-image: linear-gradient(rgba(255,255,255,0.35), rgba(255,255,255,0.35)), linear-gradient(rgba(255,255,255,0.35), rgba(255,255,255,0.35)), linear-gradient(rgba(255,255,255,0.35), rgba(255,255,255,0.35)), linear-gradient(rgba(255,255,255,0.35), rgba(255,255,255,0.35));
+    background-size: 1px 100%, 1px 100%, 100% 1px, 100% 1px; background-position: 33.33% 0, 66.67% 0, 0 33.33%, 0 66.67%; background-repeat: no-repeat; }
+  .crop-frame[hidden] { display: none; }
+  .crop-frame:focus-visible { outline: 3px solid var(--purple2); }
+  .preset-row { display: flex; flex-wrap: wrap; gap: 6px; }
+  .preset-row .btn-copy[aria-pressed="true"] { color: var(--accent); background: var(--purple3); border-color: var(--purple); }
+  #cropSize { accent-color: var(--purple); width: 100%; }
   .modal-view[hidden] { display: none; }
   .btn-use { background: transparent; color: var(--purple2); }
   .btn-back { align-self: flex-start; }
@@ -598,6 +606,7 @@
     <div class="modal-img-pane">
       <div class="img-skeleton" id="modalSkeleton" aria-hidden="true">Loading image…</div>
       <img id="modalImg" alt="">
+      <div class="crop-frame" id="cropFrame" tabindex="0" role="group" aria-label="Crop area. Drag it, or use the arrow keys, to move it." hidden></div>
     </div>
     <div class="modal-info-pane">
       <div class="modal-top">
@@ -613,12 +622,30 @@
         <button type="button" class="btn-copy" id="copyCreditBtn" onclick="copyCredit()">Copy credit</button>
         <button type="button" class="btn-copy" id="copyImageBtn" onclick="copyImage()">Copy image</button>
         <button type="button" class="btn-copy" id="copyBtn" onclick="copyUrl()">Copy link</button>
+        <button type="button" class="btn-copy" id="cropBtn" onclick="showCropView()">Crop</button>
         <button type="button" class="btn-copy" id="modalStarBtn" onclick="toggleCollectionCurrent()" aria-pressed="false">&#x2606; Save to collection</button>
       </div>
       <div class="btn-row">
         <button type="button" class="btn-download" id="modalDownload" onclick="downloadImage()">&#x2193; Download Image</button>
         <a class="btn-open" id="modalOpen" href="#" target="_blank" rel="noopener">Open source page</a>
       </div>
+      </div>
+
+      <div id="cropView" class="modal-view" hidden>
+        <button type="button" class="btn-copy btn-back" id="cropBackBtn" onclick="showDetailsView()">&#x2190; Back to details</button>
+        <h2 class="modal-title" id="cropTitle">Crop</h2>
+        <fieldset class="field">
+          <legend class="field-label">Shape</legend>
+          <div class="preset-row" id="cropPresets"></div>
+        </fieldset>
+        <div class="field">
+          <label class="field-label" for="cropSize">Size</label>
+          <input type="range" id="cropSize" min="20" max="100" value="100" oninput="setCropSize(this.value)">
+        </div>
+        <p class="field-note">Drag the frame to choose the area, or select the frame and use the arrow keys (hold Shift to move faster).</p>
+        <p class="field-note" id="cropInfo"></p>
+        <button type="button" class="btn-download" id="cropDownloadBtn" onclick="downloadCrop()">&#x2193; Download cropped image</button>
+        <p class="field-note" id="cropNote">To use it in a course page, upload the file to your course, then paste its address under "Use in a course".</p>
       </div>
 
       <div id="useView" class="modal-view" hidden>
@@ -1588,6 +1615,8 @@ function showModalItem(img) {
   showModalImage(img);
   renderModalAttrs(img);
   if (!$('useView').hidden) initUseView(img);
+  if (!$('cropView').hidden) { if (img.mediaType === 'icon') showDetailsView(false); else startCrop(img); }
+  $('cropBtn').disabled = img.mediaType === 'icon';  // icons are vector art; cropping them isn't useful
   updateModalStar();
   updateModalNav();
 }
@@ -1694,18 +1723,22 @@ function draftAlt(img) {
   return t ? t.charAt(0).toUpperCase() + t.slice(1) + '.' : '';
 }
 
+function setView(name) {
+  ['detailsView', 'useView', 'cropView'].forEach(id => { $(id).hidden = id !== name; });
+  if (name !== 'cropView') endCrop();
+}
+
 function showUseView() {
   if (!currentModal) return;
   initUseView(currentModal);
-  $('detailsView').hidden = true;
-  $('useView').hidden = false;
+  setView('useView');
   $('altText').focus();
 }
 
 function showDetailsView(focus = true) {
-  $('useView').hidden = true;
-  $('detailsView').hidden = false;
-  if (focus) $('useBtn').focus();
+  const from = !$('cropView').hidden ? 'cropBtn' : 'useBtn';
+  setView('detailsView');
+  if (focus) $(from).focus();
 }
 
 function initUseView(img) {
@@ -1839,6 +1872,171 @@ async function suggestAiAlt() {
     }
   } finally {
     if (useItem === img) btn.disabled = false;
+  }
+}
+
+// ---- Crops ----
+const CROP_PRESETS = [
+  { id: '16:9', label: '16:9', ratio: 16 / 9 },
+  { id: '4:3', label: '4:3', ratio: 4 / 3 },
+  { id: '1:1', label: 'Square', ratio: 1 },
+  { id: '3:1', label: 'Banner 3:1', ratio: 3 },
+  { id: 'card', label: 'Course card (262 × 146)', ratio: 262 / 146 },
+];
+const CROP_MAX_PX = 4000;
+let crop = null;  // frame position and size as fractions of the image: { img, ratio, size, x, y, w, h }
+
+function showCropView() {
+  if (!currentModal || currentModal.mediaType === 'icon') return;
+  setView('cropView');
+  startCrop(currentModal);
+  $('cropFrame').focus();
+}
+
+function startCrop(img) {
+  const presets = $('cropPresets');
+  if (!presets.children.length) {
+    CROP_PRESETS.forEach(p => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'btn-copy';
+      b.textContent = p.label;
+      b.dataset.preset = p.id;
+      b.addEventListener('click', () => setCropShape(p.id));
+      presets.appendChild(b);
+    });
+  }
+  crop = { img, ratio: crop?.ratio || 16 / 9, size: 1, x: 0, y: 0, w: 1, h: 1 };
+  $('cropSize').value = 100;
+  $('cropNote').textContent = 'To use it in a course page, upload the file to your course, then paste its address under "Use in a course".';
+  setCropShape(CROP_PRESETS.find(p => p.ratio === crop.ratio)?.id || '16:9');
+  whenModalImageReady(img, () => { $('cropFrame').hidden = false; fitCrop(false); });
+}
+
+function endCrop() {
+  crop = null;
+  $('cropFrame').hidden = true;
+}
+
+// The frame is placed over the displayed image, so wait until that image has loaded
+function whenModalImageReady(img, fn) {
+  const pane = document.querySelector('.modal-img-pane');
+  const started = Date.now();
+  const tick = () => {
+    if (!crop || crop.img !== img) return;
+    if (!pane.classList.contains('loading') && $('modalImg').naturalWidth) fn();
+    else if (Date.now() - started < 30000) setTimeout(tick, 100);
+  };
+  tick();
+}
+
+function setCropShape(id) {
+  if (!crop) return;
+  const preset = CROP_PRESETS.find(p => p.id === id) || CROP_PRESETS[0];
+  crop.ratio = preset.ratio;
+  [...$('cropPresets').children].forEach(b => b.setAttribute('aria-pressed', String(b.dataset.preset === preset.id)));
+  fitCrop(true);
+}
+
+function setCropSize(value) {
+  if (!crop) return;
+  crop.size = Math.min(100, Math.max(20, Number(value))) / 100;
+  fitCrop(true);
+}
+
+// Largest frame of the chosen shape that fits the image, scaled by the size slider
+function fitCrop(keepCenter) {
+  const el = $('modalImg');
+  if (!crop || !el.naturalWidth) return;
+  const imageRatio = el.naturalWidth / el.naturalHeight;
+  let w = 1, h = 1;
+  if (crop.ratio > imageRatio) h = imageRatio / crop.ratio; else w = crop.ratio / imageRatio;
+  w *= crop.size;
+  h *= crop.size;
+  const cx = keepCenter && crop.w ? crop.x + crop.w / 2 : 0.5;
+  const cy = keepCenter && crop.h ? crop.y + crop.h / 2 : 0.5;
+  Object.assign(crop, { w, h });
+  moveCrop(cx - w / 2, cy - h / 2);
+}
+
+function moveCrop(x, y) {
+  crop.x = Math.min(Math.max(0, x), 1 - crop.w);
+  crop.y = Math.min(Math.max(0, y), 1 - crop.h);
+  renderCrop();
+}
+
+function renderCrop() {
+  if (!crop) return;
+  const el = $('modalImg');
+  const frame = $('cropFrame');
+  Object.assign(frame.style, {
+    left: `${el.offsetLeft + crop.x * el.offsetWidth}px`,
+    top: `${el.offsetTop + crop.y * el.offsetHeight}px`,
+    width: `${crop.w * el.offsetWidth}px`,
+    height: `${crop.h * el.offsetHeight}px`,
+  });
+  const img = crop.img;
+  if (img.width && img.height) {
+    const cw = crop.w * img.width, ch = crop.h * img.height;
+    const scale = Math.min(1, CROP_MAX_PX / Math.max(cw, ch));
+    $('cropInfo').textContent = `Cropped image: ${Math.round(cw * scale)} × ${Math.round(ch * scale)} px`;
+  } else {
+    $('cropInfo').textContent = '';
+  }
+}
+
+(() => {
+  const frame = $('cropFrame');
+  let drag = null;
+  frame.addEventListener('pointerdown', e => {
+    if (!crop) return;
+    drag = { px: e.clientX, py: e.clientY, x: crop.x, y: crop.y };
+    frame.setPointerCapture(e.pointerId);
+  });
+  frame.addEventListener('pointermove', e => {
+    if (!drag || !crop) return;
+    const el = $('modalImg');
+    moveCrop(drag.x + (e.clientX - drag.px) / el.offsetWidth, drag.y + (e.clientY - drag.py) / el.offsetHeight);
+  });
+  const stop = () => { drag = null; };
+  frame.addEventListener('pointerup', stop);
+  frame.addEventListener('pointercancel', stop);
+  frame.addEventListener('keydown', e => {
+    if (!crop) return;
+    const step = e.shiftKey ? 0.1 : 0.02;
+    const moves = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] };
+    if (!moves[e.key]) return;
+    e.preventDefault();
+    e.stopPropagation();  // arrows move the frame here, not to the next image
+    moveCrop(crop.x + moves[e.key][0], crop.y + moves[e.key][1]);
+  });
+  window.addEventListener('resize', renderCrop);
+})();
+
+async function downloadCrop() {
+  if (!crop) return;
+  const { img, x, y, w, h } = crop;
+  const btn = $('cropDownloadBtn');
+  const label = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Preparing the cropped image…';
+  try {
+    trackDownload(img);
+    const bmp = await createImageBitmap(await fetchImageBlob(img));
+    const sw = w * bmp.width, sh = h * bmp.height;
+    const scale = Math.min(1, CROP_MAX_PX / Math.max(sw, sh));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(sw * scale));
+    canvas.height = Math.max(1, Math.round(sh * scale));
+    canvas.getContext('2d').drawImage(bmp, x * bmp.width, y * bmp.height, sw, sh, 0, 0, canvas.width, canvas.height);
+    bmp.close?.();
+    const blob = await new Promise((resolve, reject) => canvas.toBlob(b => (b ? resolve(b) : reject(new Error('encode failed'))), 'image/jpeg', 0.92));
+    saveBlob(blob, `${fileSlug(img)}-crop.jpg`);
+  } catch {
+    $('cropNote').textContent = "This image's website doesn't allow it to be edited in the browser, so it can't be cropped here. Use Download Image instead, and crop it in another program.";
+  } finally {
+    btn.disabled = false;
+    btn.textContent = label;
   }
 }
 

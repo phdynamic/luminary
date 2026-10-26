@@ -301,6 +301,24 @@
   .btn-open { width: 100%; background: transparent; border: 1px solid var(--border2); color: var(--text2); font-family: 'DM Sans', sans-serif; font-size: 13px; padding: 9px; border-radius: var(--radius2); cursor: pointer; transition: border-color 0.15s, color 0.15s; text-align: center; text-decoration: none; display: block; }
   .btn-open:hover { border-color: var(--purple3); color: var(--purple2); }
   .btn-row { display: flex; flex-direction: column; gap: 8px; }
+  .modal-view { display: flex; flex-direction: column; gap: 14px; }
+  .modal-view[hidden] { display: none; }
+  .btn-use { background: transparent; color: var(--purple2); }
+  .btn-back { align-self: flex-start; }
+  .field { display: flex; flex-direction: column; gap: 6px; border: 0; padding: 0; margin: 0; min-width: 0; }
+  .field-label { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); padding: 0; }
+  .field textarea, .field input[type="url"], .field select { width: 100%; background: var(--bg); border: 1px solid var(--border2); border-radius: var(--radius2); color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 13px; padding: 8px 10px; resize: vertical; }
+  .field textarea:focus, .field input[type="url"]:focus, .field select:focus { outline: none; border-color: var(--purple2); box-shadow: 0 0 0 1px var(--purple2); }
+  #embedOutput { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11px; color: var(--text2); }
+  .field-meta { font-size: 11px; color: var(--text3); }
+  .field-meta .over { color: #e5a423; }
+  .field-note { font-size: 12px; color: var(--text3); line-height: 1.5; }
+  .check-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text2); cursor: pointer; }
+  .check-row input { accent-color: var(--purple); }
+  .alt-tips { font-size: 12px; color: var(--text2); }
+  .alt-tips summary { cursor: pointer; color: var(--purple2); }
+  .alt-tips ul { margin: 6px 0 0 18px; display: flex; flex-direction: column; gap: 3px; }
+  .field .btn-copy { align-self: flex-start; }
 
   /* ---- Collection panel ---- */
   .collection-panel { background: var(--bg2); border: 1px solid var(--border2); border-radius: 16px; max-width: 920px; width: 100%; max-height: 88vh; display: flex; flex-direction: column; overflow: hidden; }
@@ -586,9 +604,11 @@
         <span class="modal-source-tag" id="modalSource"></span>
         <button type="button" class="btn-close" id="modalClose" onclick="closeModal()" aria-label="Close">&#x2715;</button>
       </div>
+      <div id="detailsView" class="modal-view">
       <h2 class="modal-title" id="modalTitle"></h2>
       <div class="modal-attrs" id="modalAttrs"></div>
       <p class="license-note" id="modalLicense"></p>
+      <button type="button" class="btn-download btn-use" id="useBtn" onclick="showUseView()">Use in a course</button>
       <div class="modal-actions">
         <button type="button" class="btn-copy" id="copyCreditBtn" onclick="copyCredit()">Copy credit</button>
         <button type="button" class="btn-copy" id="copyImageBtn" onclick="copyImage()">Copy image</button>
@@ -598,6 +618,61 @@
       <div class="btn-row">
         <button type="button" class="btn-download" id="modalDownload" onclick="downloadImage()">&#x2193; Download Image</button>
         <a class="btn-open" id="modalOpen" href="#" target="_blank" rel="noopener">Open source page</a>
+      </div>
+      </div>
+
+      <div id="useView" class="modal-view" hidden>
+        <button type="button" class="btn-copy btn-back" id="useBackBtn" onclick="showDetailsView()">&#x2190; Back to details</button>
+        <h2 class="modal-title" id="useTitle">Use in a course</h2>
+
+        <div class="field">
+          <label class="field-label" for="altText">Alt text</label>
+          <textarea id="altText" rows="3" oninput="altEdited()" aria-describedby="altMeta altBasisNote"></textarea>
+          <div class="field-meta" id="altMeta"><span id="altCount">0 characters</span></div>
+          <p class="field-note" id="altBasisNote"></p>
+          <label class="check-row"><input type="checkbox" id="altDecorative" onchange="updateEmbed()"> Decorative image (leave alt text empty)</label>
+          <button type="button" class="btn-copy" id="aiAltBtn" onclick="suggestAiAlt()">Suggest with on-device AI</button>
+          <p class="field-note" id="aiAltNote">Runs in your browser, at no cost. The first use downloads the AI model, which is large and may take a few minutes; after that it's stored by your browser.</p>
+          <details class="alt-tips">
+            <summary>Tips for good alt text</summary>
+            <ul>
+              <li>Describe what the image contributes to the lesson, not every detail.</li>
+              <li>Keep it short: about one sentence, under 150 characters.</li>
+              <li>Don't start with "Image of" or "Photo of"; screen readers already say it's an image.</li>
+              <li>Include any text that appears in the image.</li>
+              <li>Mark the image decorative only if it adds nothing to the content.</li>
+            </ul>
+          </details>
+        </div>
+
+        <fieldset class="field">
+          <legend class="field-label">HTML for</legend>
+          <label class="check-row"><input type="radio" name="embedFormat" value="lms" checked onchange="updateEmbed()"> Any LMS</label>
+          <label class="check-row"><input type="radio" name="embedFormat" value="designplus" onchange="updateEmbed()"> Canvas with DesignPlus</label>
+        </fieldset>
+
+        <div class="field">
+          <label class="field-label" for="embedWidth">Width</label>
+          <select id="embedWidth" onchange="updateEmbed()">
+            <option value="300px">Small (300 px)</option>
+            <option value="480px" selected>Medium (480 px)</option>
+            <option value="720px">Large (720 px)</option>
+            <option value="100%">Full width</option>
+          </select>
+          <label class="check-row"><input type="checkbox" id="embedTitle" onchange="updateEmbed()"> Include the image title in the caption</label>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="embedSrc">Image address</label>
+          <input type="url" id="embedSrc" oninput="updateEmbed()" aria-describedby="hostingNote">
+          <p class="field-note" id="hostingNote"></p>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="embedOutput">HTML</label>
+          <textarea id="embedOutput" rows="6" readonly></textarea>
+        </div>
+        <button type="button" class="btn-download" id="copyHtmlBtn" onclick="copyEmbed()">Copy HTML</button>
       </div>
     </div>
   </div>
@@ -993,6 +1068,7 @@ async function fetchPexels(q, page) {
   const items = (data.photos || []).map(p => ({
     id: 'px_' + p.id, source: 'Pexels',
     title: p.alt || 'Pexels photo', photographer: p.photographer, photographerUrl: p.photographer_url,
+    altHint: p.alt, altBasis: 'description',
     thumb: p.src.large,
     srcSet: { small: p.src.small, medium: p.src.medium, large: p.src.large2x || p.src.large, original: p.src.original },
     width: p.width, height: p.height, pageUrl: p.url,
@@ -1008,6 +1084,7 @@ async function fetchUnsplash(q, page) {
   const items = (data.results || []).map(p => ({
     id: 'us_' + p.id, source: 'Unsplash',
     title: p.description || p.alt_description || 'Unsplash photo', photographer: p.user?.name,
+    altHint: p.alt_description || p.description, altBasis: 'description',
     photographerUrl: p.user?.links?.html, downloadLocation: p.links?.download_location,
     thumb: p.urls.regular,
     srcSet: { small: p.urls.thumb, medium: p.urls.small, large: p.urls.regular, original: p.urls.full },
@@ -1024,6 +1101,7 @@ async function fetchPixabay(q, page) {
   const items = (data.hits || []).map(p => ({
     id: 'pb_' + p.id, source: 'Pixabay',
     title: p.tags || 'Pixabay image', photographer: p.user,
+    altHint: p.tags, altBasis: 'keywords',
     photographerUrl: p.user_id ? `https://pixabay.com/users/${encodeURIComponent(p.user)}-${p.user_id}/` : '',
     thumb: p.webformatURL,
     srcSet: { small: p.previewURL, medium: p.webformatURL, large: p.largeImageURL, original: p.fullHDURL || p.largeImageURL },
@@ -1045,6 +1123,7 @@ async function fetchOpenverse(q, page) {
     return {
       id: 'ov_' + p.id, source: 'Openverse',
       title: p.title || 'Openverse image', photographer: p.creator || 'Unknown', photographerUrl: p.creator_url || '',
+      altHint: p.title, altBasis: 'title', licenseUrl: p.license_url || '',
       thumb: p.thumbnail || p.url,
       srcSet: { small: p.thumbnail || p.url, medium: p.url, large: p.url, original: p.url },
       width: p.width || null, height: p.height || null,
@@ -1074,6 +1153,8 @@ async function wikimediaSearch(search, page, label) {
     return {
       id: 'wm_' + p.pageid, source: 'Wikimedia',
       title: stripTags(meta.ImageDescription?.value || p.title.replace('File:', '')),
+      altHint: stripTags(meta.ImageDescription?.value || p.title.replace('File:', '')), altBasis: meta.ImageDescription ? 'description' : 'title',
+      licenseUrl: meta.LicenseUrl?.value || '',
       photographer: stripTags(meta.Artist?.value || 'Unknown'),
       thumb: info.thumburl || info.url,
       srcSet: { small: info.thumburl || info.url, medium: info.thumburl || info.url, large: info.url, original: info.url },
@@ -1101,6 +1182,7 @@ async function fetchNasa(q, page) {
     return {
       id: 'nasa_' + d.nasa_id, source: 'NASA',
       title: d.title || 'NASA image', photographer: d.photographer || d.center || 'NASA',
+      altHint: d.title, altBasis: 'title',
       thumb,
       srcSet: { small: thumb, medium: pick('medium') || thumb, large: pick('large') || original, original },
       width: null, height: null,
@@ -1139,6 +1221,7 @@ async function fetchIconify(q, page) {
     return {
       id: 'ic_' + icon, source: 'Iconify',
       title: name.replace(/[-_]/g, ' '), photographer: prefix,
+      altHint: `${name.replace(/[-_]/g, ' ')} icon`, altBasis: 'title',
       thumb: previewUrl,
       srcSet: { small: previewUrl, medium: previewUrl, large: svgUrl, original: svgUrl },
       width: null, height: null,
@@ -1179,6 +1262,7 @@ async function fetchNli(q, page) {
     return {
       id: 'nli_' + recordId, source: 'NLI',
       title: dcValue(r, 'title') || 'National Library of Israel item',
+      altHint: dcValue(r, 'title'), altBasis: 'title',
       photographer: dcValue(r, 'creator') || '',
       thumb: iiif('!600,600'),
       srcSet: { small: iiif('!300,300'), medium: iiif('!600,600'), large: iiif('!2000,2000'), original: iiif('max') },
@@ -1290,7 +1374,7 @@ function creditHtml(img) {
   return name ? `Photo by ${link(img.photographerUrl, name)} on ${site}` : `Image from ${site}`;
 }
 
-const SOURCE_FULL_NAMES = { NLI: 'National Library of Israel' };
+const SOURCE_FULL_NAMES = { NLI: 'National Library of Israel', Wikimedia: 'Wikimedia Commons' };
 function sourceName(img) { return SOURCE_FULL_NAMES[img.source] || img.source; }
 
 // ---- Rendering ----
@@ -1503,6 +1587,7 @@ function showModalItem(img) {
   $('modalOpen').href = attributionUrl(img.pageUrl, img) || '#';
   showModalImage(img);
   renderModalAttrs(img);
+  if (!$('useView').hidden) initUseView(img);
   updateModalStar();
   updateModalNav();
 }
@@ -1566,6 +1651,7 @@ function closeModal() {
   $('modalOverlay').classList.remove('open');
   syncOverlays();
   modalImageToken++;
+  showDetailsView(false);
   $('modalImg').onload = $('modalImg').onerror = null;
   $('modalImg').removeAttribute('src');
   // Return focus to the card for the image last viewed, falling back to whatever opened the modal
@@ -1577,6 +1663,184 @@ function closeModal() {
 }
 
 function closeModalOnBg(e) { if (e.target === $('modalOverlay')) closeModal(); }
+
+// ---- Use in a course: alt text and embed HTML ----
+const ALT_LIMIT = 150;
+const ALT_BASIS_NOTES = {
+  description: "Drafted from the source's description of the image. Check that it says what matters for your lesson.",
+  keywords: "Drafted from the image's keywords. Rewrite it as a sentence that describes the image.",
+  title: "Drafted from the image's title, which may not describe what it shows. Check it against the image.",
+  ai: 'Suggested by the on-device AI. It describes the scene in general terms, so add the details that matter for your lesson.',
+  none: 'No description was available, so write one from the image.',
+};
+const EMBED_PREFS_KEY = 'luminary-embed-prefs';
+let useItem = null;
+
+// Turns an image's own description, title or keywords into a first draft of alt text
+function draftAlt(img) {
+  let t = String(img.altHint || '').replace(/\s+/g, ' ').trim()
+    .replace(/\.(jpe?g|png|gif|tiff?|svg|webp)$/i, '').replace(/_+/g, ' ')
+    .replace(/^(an?\s+)?(photo(graph)?|image|picture|illustration)\s*(of|showing)?\s*:\s*/i, '')
+    .replace(/^(an?\s+)?(photo(graph)?|image|picture|illustration)\s+(of|showing)\s+/i, '');
+  if (img.altBasis === 'keywords') {
+    const words = t.split(/\s*,\s*/).filter(Boolean);
+    t = words.length > 1 ? `${words.slice(0, -1).join(', ')} and ${words.at(-1)}` : (words[0] || '');
+  }
+  if (t.length > ALT_LIMIT) {
+    const firstSentence = t.match(/^.{20,}?[.!?](?=\s|$)/);
+    t = firstSentence && firstSentence[0].length <= ALT_LIMIT ? firstSentence[0] : t.slice(0, ALT_LIMIT - 1).replace(/\s+\S*$/, '');
+  }
+  t = t.replace(/[\s.,;:]+$/, '');
+  return t ? t.charAt(0).toUpperCase() + t.slice(1) + '.' : '';
+}
+
+function showUseView() {
+  if (!currentModal) return;
+  initUseView(currentModal);
+  $('detailsView').hidden = true;
+  $('useView').hidden = false;
+  $('altText').focus();
+}
+
+function showDetailsView(focus = true) {
+  $('useView').hidden = true;
+  $('detailsView').hidden = false;
+  if (focus) $('useBtn').focus();
+}
+
+function initUseView(img) {
+  useItem = img;
+  const draft = draftAlt(img);
+  $('altText').value = draft;
+  $('altDecorative').checked = false;
+  setAltBasis(draft ? (img.altBasis || 'title') : 'none');
+  $('aiAltBtn').disabled = false;
+  $('aiAltBtn').textContent = 'Suggest with on-device AI';
+  $('embedSrc').value = img.srcSet.large || img.srcSet.original || img.thumb;
+  $('hostingNote').textContent =
+    img.source === 'Unsplash' ? 'Unsplash asks that its photos be shown from its own address, so keep this address as it is.' :
+    img.source === 'Pixabay' ? "Pixabay doesn't allow long-term links to its images. Download the image, upload it to your course files, and paste its address here." :
+    "For a lasting course page, upload the image to your course files and paste its address here, so the page doesn't depend on another site.";
+  try {
+    const prefs = JSON.parse(localStorage.getItem(EMBED_PREFS_KEY) || '{}');
+    if (prefs.format) document.querySelector(`input[name="embedFormat"][value="${prefs.format === 'designplus' ? 'designplus' : 'lms'}"]`).checked = true;
+    if (['300px', '480px', '720px', '100%'].includes(prefs.width)) $('embedWidth').value = prefs.width;
+    $('embedTitle').checked = !!prefs.title;
+  } catch { /* preferences are a convenience only */ }
+  updateEmbed();
+}
+
+function setAltBasis(basis) {
+  $('altBasisNote').textContent = ALT_BASIS_NOTES[basis] || '';
+}
+
+function altEdited() { updateEmbed(); }
+
+// Plain ASCII output, so the HTML survives being pasted into any editor
+function asciiHtml(s) {
+  return [...escHtml(s)].map(c => (c.codePointAt(0) > 127 ? `&#${c.codePointAt(0)};` : c)).join('');
+}
+
+// Caption with title, author, source and license, each linked where possible
+function captionHtml(img, includeTitle) {
+  const link = (url, text) => {
+    const href = attributionUrl(url, img);
+    return href ? `<a href="${asciiHtml(href)}" target="_blank" rel="noopener">${asciiHtml(text)}</a>` : asciiHtml(text);
+  };
+  const name = img.photographer && img.photographer !== 'Unknown' ? img.photographer : '';
+  const title = includeTitle && img.title ? `&#8220;${asciiHtml(truncate(img.title.replace(/\s+/g, ' ').trim(), 120))}&#8221; ` : '';
+  const site = link(img.pageUrl, sourceName(img));
+  const credit = img.mediaType === 'icon'
+    ? `Icon from ${asciiHtml(name || 'an open-source set')} on ${site}`
+    : name ? `Photo by ${link(img.photographerUrl || img.pageUrl, name)} on ${site}` : `Image from ${site}`;
+  const license = img.licenseUrl ? link(img.licenseUrl, img.license) : asciiHtml(img.license);
+  return `${title}${credit}. License: ${license}.`;
+}
+
+function embedHtml(img, { src, alt, width, format, includeTitle }) {
+  const caption = captionHtml(img, includeTitle);
+  if (format === 'designplus') {
+    return `<figure style="width: ${width};"><img src="${asciiHtml(src)}" alt="${asciiHtml(alt)}" width="100%" height="100%" /><figcaption>${caption}</figcaption></figure>`;
+  }
+  return `<figure style="margin: 1em 0; width: ${width}; max-width: 100%;">` +
+    `<img src="${asciiHtml(src)}" alt="${asciiHtml(alt)}" style="display: block; width: 100%; height: auto;" />` +
+    `<figcaption style="font-size: 0.85em; margin-top: 0.4em;">${caption}</figcaption></figure>`;
+}
+
+function updateEmbed() {
+  if (!useItem) return;
+  const decorative = $('altDecorative').checked;
+  const alt = decorative ? '' : $('altText').value.replace(/\s+/g, ' ').trim();
+  $('altText').disabled = decorative;
+  const count = $('altText').value.trim().length;
+  $('altCount').textContent = `${count} character${count === 1 ? '' : 's'}`;
+  $('altCount').classList.toggle('over', count > ALT_LIMIT);
+  if (count > ALT_LIMIT) $('altCount').textContent += ` (consider shortening to under ${ALT_LIMIT})`;
+  const format = document.querySelector('input[name="embedFormat"]:checked').value;
+  const width = $('embedWidth').value;
+  const includeTitle = $('embedTitle').checked;
+  const src = safeUrl($('embedSrc').value.trim()) || useItem.srcSet.large || useItem.thumb;
+  $('embedOutput').value = embedHtml(useItem, { src, alt, width, format, includeTitle });
+  try { localStorage.setItem(EMBED_PREFS_KEY, JSON.stringify({ format, width, title: includeTitle })); } catch { /* optional */ }
+}
+
+function copyEmbed() {
+  if (!useItem) return;
+  if (!$('altDecorative').checked && !$('altText').value.trim()) {
+    flash($('copyHtmlBtn'), 'Add alt text, or mark the image decorative', false);
+    $('altText').focus();
+    return;
+  }
+  trackDownload(useItem);  // putting a photo in a course counts as using it, for Unsplash
+  copyText($('embedOutput').value, $('copyHtmlBtn'), 'HTML copied!');
+}
+
+// ---- On-device AI alt text (runs in the browser; no service or key) ----
+const CAPTION_LIB = 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.0';
+const CAPTION_MODEL = 'Xenova/vit-gpt2-image-captioning';
+let captionerPromise = null;
+
+function loadCaptioner(onProgress) {
+  captionerPromise ||= import(CAPTION_LIB)
+    .then(({ pipeline }) => pipeline('image-to-text', CAPTION_MODEL, { progress_callback: onProgress }))
+    .catch(err => { captionerPromise = null; throw err; });
+  return captionerPromise;
+}
+
+async function suggestAiAlt() {
+  const img = useItem;
+  if (!img) return;
+  const btn = $('aiAltBtn');
+  btn.disabled = true;
+  btn.textContent = 'Loading the AI model…';
+  try {
+    const captioner = await loadCaptioner(p => {
+      if (p?.status === 'progress' && useItem === img && typeof p.progress === 'number') btn.textContent = `Downloading the AI model… ${Math.round(p.progress)}%`;
+    });
+    if (useItem !== img) return;
+    btn.textContent = 'Describing the image…';
+    // A mid-size version is enough for a caption and keeps the work quick
+    const blob = await (await fetch(safeUrl(img.srcSet.medium || img.thumb))).blob();
+    const url = URL.createObjectURL(blob);
+    let text;
+    try { [{ generated_text: text }] = await captioner(url); } finally { URL.revokeObjectURL(url); }
+    if (useItem !== img) return;
+    text = String(text || '').trim().replace(/\s+/g, ' ');
+    if (!text) throw new Error('empty caption');
+    $('altText').value = text.charAt(0).toUpperCase() + text.slice(1).replace(/[\s.]*$/, '.');
+    $('altDecorative').checked = false;
+    setAltBasis('ai');
+    updateEmbed();
+    btn.textContent = 'Suggest with on-device AI';
+  } catch {
+    if (useItem === img) {
+      btn.textContent = 'Suggest with on-device AI';
+      flash(btn, "Couldn't describe this image", false);
+    }
+  } finally {
+    if (useItem === img) btn.disabled = false;
+  }
+}
 
 // ---- Credits and clipboard ----
 function creditText(img) {
@@ -1782,7 +2046,7 @@ function makeZip(files) {
 }
 
 // ---- Collection ----
-const STORED_FIELDS = ['id', 'source', 'title', 'photographer', 'photographerUrl', 'downloadLocation', 'thumb', 'srcSet', 'width', 'height', 'pageUrl', 'license', 'licenseNote', 'isCC0', 'mediaType'];
+const STORED_FIELDS = ['id', 'source', 'title', 'photographer', 'photographerUrl', 'downloadLocation', 'thumb', 'srcSet', 'width', 'height', 'pageUrl', 'license', 'licenseNote', 'licenseUrl', 'isCC0', 'mediaType', 'altHint', 'altBasis'];
 
 function loadCollection() {
   try {

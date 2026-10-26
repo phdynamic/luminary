@@ -77,6 +77,21 @@
   .btn-search { background: var(--purple3); border: 1px solid var(--purple); color: var(--accent); font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 600; padding: 11px 28px; border-radius: var(--radius2); cursor: pointer; transition: background 0.2s, transform 0.1s; white-space: nowrap; }
   .btn-search:hover { background: rgba(124,92,191,0.9); }
   .btn-search:active { transform: scale(0.98); }
+  .link-btn { background: none; border: 0; padding: 0; color: var(--purple2); font-family: 'DM Sans', sans-serif; font-size: 13px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--border2); }
+  .link-btn:hover { text-decoration-color: var(--purple2); }
+  .lesson { display: flex; flex-direction: column; gap: 10px; }
+  .lesson > .link-btn { align-self: flex-start; }
+  .lesson-panel { display: flex; flex-direction: column; gap: 8px; }
+  .lesson-panel[hidden] { display: none; }
+  .lesson-panel textarea { width: 100%; background: var(--bg2); border: 1px solid var(--border2); border-radius: var(--radius2); color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 14px; padding: 10px 12px; resize: vertical; }
+  .lesson-panel textarea:focus { outline: none; border-color: var(--purple2); box-shadow: 0 0 0 1px var(--purple2); }
+  .lesson-actions { display: flex; gap: 8px; align-items: center; }
+  .lesson-actions .btn-search { padding: 9px 20px; }
+  .lesson-section { display: flex; flex-direction: column; gap: 6px; padding: 10px 0; border-top: 1px solid var(--border); }
+  .lesson-section h3 { font-size: 12px; font-weight: 500; color: var(--text2); }
+  .lesson-terms { display: flex; flex-wrap: wrap; gap: 6px; }
+  .lesson-terms .chip[aria-pressed="true"] { background: var(--purple3); color: var(--accent); border-color: var(--purple); }
+  .lesson-empty { font-size: 13px; color: var(--text3); }
 
   .controls-row { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
   .filters-row { border-top: 1px solid var(--border); padding-top: 14px; margin-top: 2px; }
@@ -430,6 +445,19 @@
       </div>
       <button type="submit" class="btn-search">Search</button>
     </form>
+
+    <div class="lesson">
+      <button type="button" class="link-btn" id="lessonToggle" aria-expanded="false" aria-controls="lessonPanel" onclick="toggleLesson()">Find images from lesson text</button>
+      <div class="lesson-panel" id="lessonPanel" hidden>
+        <label class="field-label" for="lessonText">Lesson text</label>
+        <textarea id="lessonText" rows="6" placeholder="Paste a lesson section, learning objectives, or a reading. Separate sections with a blank line."></textarea>
+        <div class="lesson-actions">
+          <button type="button" class="btn-search" onclick="analyzeLesson()">Suggest searches</button>
+          <button type="button" class="btn-copy" onclick="clearLesson()">Clear</button>
+        </div>
+        <div id="lessonResults" aria-live="polite"></div>
+      </div>
+    </div>
 
     <div class="controls-row">
       <div class="control-group" role="group" aria-labelledby="grp-sources">
@@ -920,6 +948,241 @@ async function loadMore() {
 function resumeAutoLoad() {
   autoLoadPaused = false;
   loadMore();
+}
+
+// ---- Lesson text to image searches (simple word analysis, no AI) ----
+const LESSON_KEY = 'luminary-lesson';
+const STOPWORDS = new Set(`a about above after again against all almost also although always am among an and another any are around as at
+be became because become been before being below between both but by can cannot could did do does doing done down during each either
+else enough even ever every few for from further get gets getting give given go goes going got had has have having he her here hers
+herself him himself his how however i if in into is it its itself just least less let like likely made make makes making many may me
+might more most much must my myself near need needs neither never no nor not now of off often on once one only onto or other others
+our ours ourselves out over own per perhaps quite rather really same see seen several shall she should since so some something
+sometimes still such than that the their theirs them themselves then there therefore these they this those though through thus to
+too toward towards under until up upon us use used uses using usually very via was we well were what whatever when where whether
+which while who whom whose why will with within without would yet you your yours yourself yourselves
+able according across actually additionally already another based become begin begins best better big called certain clearly
+consider considered describe described describes discuss discussed discusses each end ensure especially etc example examples
+explain explained explains explore explores first following found four general generally good great help helps high identify
+identified important include included includes including instead introduce introduced introduces key large last later learn
+learned learner learners learning lesson lessons long main mean means module modules new next number objective objectives
+often part particular particularly possible present presented provide provided provides read reading recognize recognized
+related second seem seems show shown shows significant similar simply small specific start student students study studied
+studies three today together topic topics two understand understanding unit units various way ways week weeks whole within
+work works write year years chapter chapters course courses class classes summarize summary will ce bce bc ad`.split(/\s+/));
+// Ordinals start names ("Second Temple", "First Crusade") but are ordinary words otherwise
+const ORDINALS = new Set('first second third fourth fifth sixth seventh eighth ninth tenth'.split(' '));
+// Words that rarely lead to a useful picture on their own
+const ABSTRACT = new Set(`ability abilities approach approaches aspect aspects basis case cases concept concepts context effect effects
+factor factors fact facts form forms goal goals idea ideas impact importance information issue issues kind kinds knowledge level levels
+manner nature outcome outcomes point points process processes purpose purposes question questions reason reasons relationship
+relationships result results role roles skill skills term terms theory theories thing things type types value values view views`.split(/\s+/));
+
+function toggleLesson() {
+  const panel = $('lessonPanel');
+  panel.hidden = !panel.hidden;
+  $('lessonToggle').setAttribute('aria-expanded', String(!panel.hidden));
+  if (!panel.hidden) {
+    try { if (!$('lessonText').value) $('lessonText').value = localStorage.getItem(LESSON_KEY) || ''; } catch { /* optional */ }
+    $('lessonText').focus();
+  }
+}
+
+function clearLesson() {
+  $('lessonText').value = '';
+  $('lessonResults').innerHTML = '';
+  try { localStorage.removeItem(LESSON_KEY); } catch { /* optional */ }
+  $('lessonText').focus();
+}
+
+// Splits pasted text into sections at blank lines, keeping a short first line as the section's title
+function lessonSections(text) {
+  const blocks = text.replace(/\r/g, '').split(/\n\s*\n/).map(b => b.trim()).filter(Boolean);
+  const sections = [];
+  blocks.forEach(block => {
+    const lines = block.split('\n');
+    const first = lines[0].trim();
+    const isHeading = lines.length > 1 && first.split(/\s+/).length <= 10 && !/[.!?:;]$/.test(first);
+    const lone = lines.length === 1 && first.split(/\s+/).length <= 10 && !/[.!?]$/.test(first);
+    if (lone) { sections.push({ title: first.replace(/:$/, ''), body: '' }); return; }  // a heading on its own line
+    const prev = sections.at(-1);
+    if (prev && !prev.body && !isHeading) { prev.body = block; return; }               // body following a lone heading
+    sections.push({ title: isHeading ? first : '', body: isHeading ? lines.slice(1).join(' ') : block });
+  });
+  // Merge very short sections into the one before so each has enough text to analyse
+  const merged = [];
+  sections.forEach(sec => {
+    const words = (sec.title + ' ' + sec.body).split(/\s+/).length;
+    const prev = merged.at(-1);
+    if (prev && !sec.title && words < 25) prev.body += ' ' + sec.body;
+    else merged.push({ ...sec });
+  });
+  return merged.slice(0, 10);
+}
+
+// Common verbs and their forms; a phrase is split at them, since "light energy" searches better than "absorbs light energy"
+const VERB_BASES = `absorb affect allow appear apply arrive become begin bring build carry cause celebrate change choose collapse
+commemorate compare conquer contain continue create decide decline defeat define depend describe destroy develop die divide draw drive
+emerge enable establish expand explain fall feel find flourish follow form govern grow happen hold improve increase influence invade
+involve keep know lead leave live look lose mark meet migrate move observe occur offer oppose pass pay play pray prepare preserve
+prevent produce protect provide reach rebuild receive record reduce reflect reign release remain remember remove replace represent
+require return revolt rise rule run say seem send serve settle shape share show speak spend split spread stand stay stop store
+suggest support take teach tell think trade transform translate travel try turn unite use want watch win worship write`.split(/\s+/);
+const IRREGULAR_VERBS = `became began begun brought built came drew drawn fell felt found gave given grew grown held kept knew known
+led left lost made met paid put ran rose risen said sent shown spoke spoken spent spread stood taken taught told took thought won
+wrote written rebuilt`.split(/\s+/);
+const VERBS = new Set(IRREGULAR_VERBS);
+VERB_BASES.forEach(b => {
+  const stem = b.endsWith('e') ? b.slice(0, -1) : b;
+  [b, `${b}s`, `${b}es`, `${stem}ed`, `${stem}ing`, b.endsWith('y') ? `${b.slice(0, -1)}ies` : '', b.endsWith('y') ? `${b.slice(0, -1)}ied` : ''].forEach(f => f && VERBS.add(f));
+});
+const NOT_VERBS = new Set('sacred hundred kindred naked wicked rugged beloved aged'.split(' '));
+// Short words allowed inside a name: "Arch of Titus", "Herod the Great", "Yochanan ben Zakkai"
+const NAME_JOINERS = new Set('of the ben bat bar ibn de da del von van al el la le'.split(' '));
+
+function isVerb(word) {
+  const lower = word.toLowerCase();
+  if (VERBS.has(lower)) return true;
+  return /^\p{Ll}/u.test(word) && lower.length >= 5 && lower.endsWith('ed') && !NOT_VERBS.has(lower);
+}
+
+// Words written with a capital letter somewhere other than the start of a sentence are treated as names
+function lessonProperWords(text) {
+  const proper = new Set();
+  text.split(/[.!?]\s+|\n/).forEach(sentence => {
+    const words = sentence.match(/[\p{L}\p{N}][\p{L}\p{N}'’-]*/gu) || [];
+    words.slice(1).forEach(w => { if (/^\p{Lu}/u.test(w) && !STOPWORDS.has(w.toLowerCase())) proper.add(w); });
+  });
+  return proper;
+}
+
+// Candidate phrases: names (runs of capitalised words) and runs of up to three other meaningful words
+function lessonPhrases(text, proper) {
+  const phrases = [];
+  text.split(/(?<=[.!?])\s+|\n+/).forEach(sentence => {
+    const tokens = [...sentence.matchAll(/[\p{L}\p{N}][\p{L}\p{N}'’-]*|[,;:()\[\]{}"“”‘’\/–—]|\s-\s/gu)].map(m => m[0].replace(/['’]s$/, ''));
+    const isWord = t => /^[\p{L}\p{N}]/u.test(t);
+    const isCap = (t, i) => isWord(t) && /^\p{Lu}/u.test(t) && (!STOPWORDS.has(t.toLowerCase()) || (ORDINALS.has(t.toLowerCase()) && /^\p{Lu}/u.test(tokens[i + 1] || ''))) && (i > 0 || proper.has(t) || /^\p{Lu}/u.test(tokens[i + 1] || ''));
+    let run = [];
+    const flush = () => {
+      for (let i = 0; i < run.length; i += 3) {
+        const chunk = run.slice(i, i + 3);
+        while (chunk.length && ABSTRACT.has(chunk.at(-1).toLowerCase())) chunk.pop();
+        while (chunk.length && ABSTRACT.has(chunk[0].toLowerCase())) chunk.shift();
+        if (chunk.length) phrases.push({ words: chunk, proper: chunk.some(w => proper.has(w)) });
+      }
+      run = [];
+    };
+    for (let i = 0; i < tokens.length; i++) {
+      const t = tokens[i];
+      if (isCap(t, i)) {
+        // Extend a name across capitalised words and joiners that lead to another capitalised word
+        let j = i + 1;
+        const name = [t];
+        while (j < tokens.length && name.length < 5) {
+          if (isCap(tokens[j], j)) { name.push(tokens[j]); j++; continue; }
+          if (NAME_JOINERS.has(String(tokens[j]).toLowerCase()) && isCap(tokens[j + 1] || '', j + 1)) { name.push(tokens[j], tokens[j + 1]); j += 2; continue; }
+          break;
+        }
+        if (name.length > 1 || proper.has(t)) {
+          if (name.length === 1) {
+            while (j < tokens.length && name.length < 3) {
+              const next = tokens[j], low = String(next).toLowerCase();
+              if (!isWord(next) || /^\p{Lu}/u.test(next) || STOPWORDS.has(low) || isVerb(next) || low.length < 3) break;
+              name.push(next);
+              j++;
+            }
+          }
+          flush();
+          phrases.push({ words: name, proper: true });
+          i = j - 1;
+          continue;
+        }
+      }
+      const lower = t.toLowerCase();
+      if (!isWord(t) || STOPWORDS.has(lower) || isVerb(t) || (lower.length < 3 && !/\d/.test(lower)) || (/^\d+$/.test(lower) && lower.length < 4)) flush();
+      else run.push(t);
+    }
+    flush();
+  });
+  return phrases;
+}
+
+const phraseKey = words => words.map(w => w.toLowerCase().replace(/(?<=\w{3})s$/, '')).join(' ');
+
+function suggestLessonSearches(text, perSection = 6) {
+  const sections = lessonSections(text);
+  const proper = lessonProperWords(sections.map(s => s.body).join('\n'));
+  // Title-case headings capitalise every word, so read them as ordinary words apart from known names
+  const headingText = title => title.split(/\s+/).map((w, i, all) => (proper.has(w) || (ORDINALS.has(w.toLowerCase()) && proper.has(all[i + 1])) ? w : w.toLowerCase())).join(' ');
+  const analysed = sections.map(sec => {
+    const counts = new Map();
+    lessonPhrases(`${headingText(sec.title)}\n${sec.body}`, proper).forEach(({ words, proper: isName }) => {
+      const key = phraseKey(words);
+      const entry = counts.get(key) || { words, count: 0, proper: isName };
+      entry.count++;
+      counts.set(key, entry);
+    });
+    return { ...sec, counts };
+  });
+  const docFreq = new Map();
+  analysed.forEach(sec => sec.counts.forEach((_, key) => docFreq.set(key, (docFreq.get(key) || 0) + 1)));
+  const wordFreq = new Map();
+  analysed.forEach(sec => sec.counts.forEach((e, key) => key.split(' ').forEach(w => wordFreq.set(w, (wordFreq.get(w) || 0) + e.count))));
+  return analysed.map((sec, i) => {
+    const scored = [...sec.counts.entries()].map(([key, e]) => {
+      const content = key.split(' ').filter(w => !NAME_JOINERS.has(w));
+      const wordWeight = content.reduce((sum, w) => sum + Math.log(1 + (wordFreq.get(w) || 1)), 0);
+      const distinct = Math.log(1 + analysed.length / docFreq.get(key));
+      const score = (e.count + wordWeight) * (1 + 0.35 * (Math.min(content.length, 3) - 1)) * (e.proper ? 1.6 : 1) * (0.6 + distinct);
+      const display = e.words.map(w => (proper.has(w) || (e.proper && /^\p{Lu}/u.test(w)) ? w : w.toLowerCase())).join(' ');
+      return { key, display, score };
+    }).sort((a, b) => b.score - a.score);
+    const picked = [];
+    for (const cand of scored) {
+      if (picked.length >= perSection) break;
+      // Skip a phrase already covered by (or covering) one we picked
+      if (picked.some(p => ` ${p.key} `.includes(` ${cand.key} `) || ` ${cand.key} `.includes(` ${p.key} `))) continue;
+      picked.push(cand);
+    }
+    const label = sec.title || `Section ${i + 1}: ${truncate(sec.body.split(/\s+/).slice(0, 6).join(' '), 48)}`;
+    return { title: label, terms: picked.map(p => p.display) };
+  }).filter(sec => sec.terms.length);
+}
+
+function analyzeLesson() {
+  const text = $('lessonText').value;
+  try { localStorage.setItem(LESSON_KEY, text); } catch { /* optional */ }
+  const results = $('lessonResults');
+  results.innerHTML = '';
+  const sections = suggestLessonSearches(text);
+  if (!sections.length) {
+    results.innerHTML = '<p class="lesson-empty">No searchable terms found. Paste a few sentences of lesson text and try again.</p>';
+    return;
+  }
+  sections.forEach(sec => {
+    const wrap = document.createElement('section');
+    wrap.className = 'lesson-section';
+    const h = document.createElement('h3');
+    h.textContent = sec.title;
+    const terms = document.createElement('div');
+    terms.className = 'lesson-terms';
+    sec.terms.forEach(term => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'chip';
+      b.textContent = term;
+      b.setAttribute('aria-pressed', 'false');
+      b.addEventListener('click', () => {
+        results.querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', String(c === b)));
+        $('searchQuery').value = term;
+        doSearch();
+      });
+      terms.appendChild(b);
+    });
+    wrap.append(h, terms);
+    results.appendChild(wrap);
+  });
 }
 
 function shuffle(arr) {
